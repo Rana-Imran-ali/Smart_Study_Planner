@@ -47,12 +47,28 @@ const FAQS = [
 ];
 
 function App() {
-  // Navigation Routing state ('landing' or 'login')
-  const [view, setView] = useState('landing');
+  // Load initial login state from localStorage
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('ss_isLoggedIn') === 'true';
+  });
+  const [userEmail, setUserEmail] = useState(() => {
+    return localStorage.getItem('ss_userEmail') || '';
+  });
   
-  // Login Authentication state
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  // Navigation Routing state ('landing' | 'login' | 'register' | 'dashboard')
+  const [view, setView] = useState(() => {
+    const loggedIn = localStorage.getItem('ss_isLoggedIn') === 'true';
+    return loggedIn ? 'dashboard' : 'landing';
+  });
+
+  // Dashboard state
+  const [activeTab, setActiveTab] = useState('overview');
+  const [studyStreak, setStudyStreak] = useState(7);
+  const [averageFocusScore, setAverageFocusScore] = useState(94);
+  const [totalStudyTime, setTotalStudyTime] = useState(18.5);
+  const [timerMode, setTimerMode] = useState('study');
+  const [ambientSound, setAmbientSound] = useState('none');
+  const [taskFilter, setTaskFilter] = useState('all');
   
   // Login form state
   const [isSignUp, setIsSignUp] = useState(false);
@@ -86,17 +102,72 @@ function App() {
   // FAQ Accordion state
   const [activeFaq, setActiveFaq] = useState(null);
 
-  // Task list in the Mock Dashboard
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "Read Chapter 4 (Logic Gates)", done: true },
-    { id: 2, text: "Write binary tree code proof", done: false },
-    { id: 3, text: "Complete 15m review flashcards", done: false }
-  ]);
+  // Registration page state
+  const [formConfirmPassword, setFormConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [registerSuccess, setRegisterSuccess] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+
+  // Task list loaded from localStorage or default
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem('ss_tasks');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 1, text: "Read Chapter 4 (Logic Gates)", done: true, category: "Computer Science" },
+      { id: 2, text: "Write binary tree code proof", done: false, category: "Computer Science" },
+      { id: 3, text: "Complete 15m review flashcards", done: false, category: "General" },
+      { id: 4, text: "Study organic chemistry pathways", done: false, category: "Chemistry" }
+    ];
+  });
+
+  // Recent activity logs loaded from localStorage or default
+  const [activities, setActivities] = useState(() => {
+    const saved = localStorage.getItem('ss_activities');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 1, text: "Completed a 25-minute Pomodoro study block", time: "2 hours ago", type: "focus" },
+      { id: 2, text: "Generated a 2-hour Active Recall plan for Computer Science", time: "3 hours ago", type: "planner" },
+      { id: 3, text: "Completed 'Read Chapter 4 (Logic Gates)' task", time: "4 hours ago", type: "task" }
+    ];
+  });
 
   // Synchronize theme attribute on body
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Synchronize login state with localStorage
+  useEffect(() => {
+    localStorage.setItem('ss_isLoggedIn', isLoggedIn);
+    localStorage.setItem('ss_userEmail', userEmail);
+    if (isLoggedIn && view === 'landing') {
+      setView('dashboard');
+    }
+  }, [isLoggedIn, userEmail]);
+
+  // Synchronize tasks with localStorage
+  useEffect(() => {
+    localStorage.setItem('ss_tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Synchronize activities with localStorage
+  useEffect(() => {
+    localStorage.setItem('ss_activities', JSON.stringify(activities));
+  }, [activities]);
 
   // Pomodoro timer countdown logic
   useEffect(() => {
@@ -107,14 +178,37 @@ function App() {
       }, 1000);
     } else if (pomodoroSeconds === 0) {
       setPomodoroRunning(false);
-      alert("Great job focusing! Take a short break.");
-      setPomodoroSeconds(1500);
+      alert(`Great job focusing! Take a short break.`);
+      addActivity(`Completed a ${timerMode === 'study' ? '25m Study' : timerMode === 'short' ? '5m Break' : '15m Break'} focus session`, 'focus');
+      if (timerMode === 'study') {
+        setTotalStudyTime(prev => prev + 0.4); // Add 25 mins = ~0.4 hrs
+        setStudyStreak(prev => prev + 1);
+      }
+      setPomodoroSeconds(timerMode === 'study' ? 1500 : timerMode === 'short' ? 300 : 900);
     }
     return () => clearInterval(interval);
-  }, [pomodoroRunning, pomodoroSeconds]);
+  }, [pomodoroRunning, pomodoroSeconds, timerMode]);
+
+  // Add activity log helper
+  const addActivity = (text, type = 'general') => {
+    const newAct = {
+      id: Date.now(),
+      text,
+      time: "Just now",
+      type
+    };
+    setActivities(prev => [newAct, ...prev.slice(0, 9)]);
+  };
 
   const toggleTask = (id) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) {
+        const newDone = !t.done;
+        addActivity(newDone ? `Completed task "${t.text}" 🎉` : `Marked task "${t.text}" as pending`, 'task');
+        return { ...t, done: newDone };
+      }
+      return t;
+    }));
   };
 
   const handleToggleTheme = () => {
@@ -157,9 +251,9 @@ function App() {
       setUserEmail(formEmail);
       setFormSuccess(isSignUp ? '✨ Account created successfully!' : '🎉 Logged in successfully!');
       
-      // Auto redirect to landing page after 1s
+      // Auto redirect to dashboard page after 1s
       setTimeout(() => {
-        setView('landing');
+        setView('dashboard');
         // Clear fields
         setFormName('');
         setFormEmail('');
@@ -178,7 +272,7 @@ function App() {
       setAuthLoading(false);
       setIsLoggedIn(true);
       setUserEmail(`student.recall@${provider}.edu`);
-      setView('landing');
+      setView('dashboard');
     }, 1000);
   };
 
@@ -186,7 +280,75 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserEmail('');
+    localStorage.removeItem('ss_isLoggedIn');
+    localStorage.removeItem('ss_userEmail');
     setView('landing');
+  };
+
+  // Password strength scorer (0-5)
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: '', color: '' };
+    let score = 0;
+    if (pwd.length >= 8)  score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    const levels = [
+      { label: 'Too Short',    color: '#EF4444' },
+      { label: 'Weak',         color: '#F97316' },
+      { label: 'Fair',         color: '#F59E0B' },
+      { label: 'Good',         color: '#3B82F6' },
+      { label: 'Strong',       color: '#10B981' },
+      { label: 'Very Strong',  color: '#8B5CF6' },
+    ];
+    return { score, ...levels[Math.min(score, 5)] };
+  };
+
+  // Registration form submit handler
+  const handleRegisterSubmit = (e) => {
+    e.preventDefault();
+    setRegisterError('');
+    setRegisterSuccess('');
+
+    if (!formName.trim()) {
+      setRegisterError('Please enter your full name.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formEmail)) {
+      setRegisterError('Please enter a valid email address.');
+      return;
+    }
+    if (formPassword.length < 8) {
+      setRegisterError('Password must be at least 8 characters.');
+      return;
+    }
+    if (formPassword !== formConfirmPassword) {
+      setRegisterError('Passwords do not match. Please re-enter.');
+      return;
+    }
+    if (!termsAccepted) {
+      setRegisterError('Please accept the Terms of Service to continue.');
+      return;
+    }
+
+    setRegisterLoading(true);
+    setTimeout(() => {
+      setRegisterLoading(false);
+      setIsLoggedIn(true);
+      setUserEmail(formEmail);
+      setRegisterSuccess('🎉 Account created! Welcome to SmartStudy!');
+      setTimeout(() => {
+        setView('dashboard');
+        setFormName('');
+        setFormEmail('');
+        setFormPassword('');
+        setFormConfirmPassword('');
+        setTermsAccepted(false);
+        setRegisterSuccess('');
+      }, 1400);
+    }, 1500);
   };
 
   // Logic to dynamically generate a customized schedule
@@ -265,6 +427,1187 @@ function App() {
     setSuccessMsg('🎉 Schedule synced directly to your calendar!');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
+
+  // ================= DASHBOARD ACTIONS & HELPER FUNCTIONS =================
+  
+  const handleQuickAddTask = (e) => {
+    e.preventDefault();
+    const text = e.target.elements.quickTaskText.value.trim();
+    if (!text) return;
+    
+    const newTask = {
+      id: Date.now(),
+      text,
+      done: false,
+      category: "General"
+    };
+
+    setTasks(prev => [...prev, newTask]);
+    addActivity(`Created task "${text}"`, 'task');
+    e.target.reset();
+  };
+
+  const handleAddNewTask = (e) => {
+    e.preventDefault();
+    const text = e.target.elements.taskText.value.trim();
+    const category = e.target.elements.taskCategory.value;
+    if (!text) return;
+
+    const newTask = {
+      id: Date.now(),
+      text,
+      done: false,
+      category
+    };
+
+    setTasks(prev => [...prev, newTask]);
+    addActivity(`Created task "${text}" under ${category}`, 'task');
+    e.target.reset();
+  };
+
+  const handleDeleteTask = (id, text) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+    addActivity(`Deleted task "${text}"`, 'task');
+  };
+
+  const handleSwitchTimerMode = (newMode) => {
+    setPomodoroRunning(false);
+    setTimerMode(newMode);
+    if (newMode === 'study') {
+      setPomodoroSeconds(1500);
+    } else if (newMode === 'short') {
+      setPomodoroSeconds(300);
+    } else if (newMode === 'long') {
+      setPomodoroSeconds(900);
+    }
+  };
+
+  // ================= DASHBOARD TAB RENDERERS =================
+
+  const renderOverviewTab = () => {
+    const completedTasksCount = tasks.filter(t => t.done).length;
+    const totalTasksCount = tasks.length;
+    const completionRate = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+    const chartData = [
+      { day: 'Mon', hours: 2.5 },
+      { day: 'Tue', hours: 3.8 },
+      { day: 'Wed', hours: 1.2 },
+      { day: 'Thu', hours: 4.5 },
+      { day: 'Fri', hours: 3.0 },
+      { day: 'Sat', hours: 2.0 },
+      { day: 'Sun', hours: 1.5 }
+    ];
+
+    return (
+      <div className="overview-tab-layout">
+        {/* STATS GRID */}
+        <div className="stats-cards-grid">
+          <div className="db-stat-card">
+            <div className="stat-card-icon time">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="stat-card-info">
+              <h3>{totalStudyTime} hrs</h3>
+              <p>Total Study Time</p>
+            </div>
+            <span className="stat-card-trend positive">+12% this wk</span>
+          </div>
+
+          <div className="db-stat-card">
+            <div className="stat-card-icon tasks">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div className="stat-card-info">
+              <h3>{completedTasksCount}/{totalTasksCount}</h3>
+              <p>Tasks Completed ({completionRate}%)</p>
+            </div>
+            <span className="stat-card-trend positive">80% efficiency</span>
+          </div>
+
+          <div className="db-stat-card">
+            <div className="stat-card-icon focus">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="stat-card-info">
+              <h3>{averageFocusScore}/100</h3>
+              <p>Average Focus Score</p>
+            </div>
+            <span className="stat-card-trend positive">Top 5% student</span>
+          </div>
+
+          <div className="db-stat-card">
+            <div className="stat-card-icon mode">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div className="stat-card-info">
+              <h3>{mode === 'active-recall' ? 'Active Recall' : mode === 'deep-focus' ? 'Deep Focus' : mode === 'cram-mode' ? 'Cram Mode' : 'Spaced Repetition'}</h3>
+              <p>Current Study Mode</p>
+            </div>
+            <span className="stat-card-trend text-glow">Optimized</span>
+          </div>
+        </div>
+
+        {/* MID GRID: WEEKLY GRAPH + QUICK ACTIONS */}
+        <div className="overview-mid-grid">
+          {/* Progress Chart card */}
+          <div className="db-widget chart-widget-card">
+            <div className="widget-header">
+              <h3>Weekly Progress</h3>
+              <span className="widget-subtitle">Study duration (hours)</span>
+            </div>
+            <div className="chart-bar-container">
+              {chartData.map((data, idx) => {
+                const heightPercent = `${Math.min((data.hours / 6) * 100, 100)}%`;
+                return (
+                  <div key={idx} className="chart-bar-column">
+                    <div className="chart-bar-hover-val">{data.hours}h</div>
+                    <div className="chart-bar-fill-track">
+                      <div className="chart-bar-active-fill" style={{ height: heightPercent }}></div>
+                    </div>
+                    <span className="chart-bar-label">{data.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Actions card */}
+          <div className="db-widget quick-actions-widget">
+            <h3>Quick Actions</h3>
+            <p>Accelerate your workflow with one click.</p>
+            <div className="quick-actions-grid">
+              <button className="quick-action-btn focus-action" onClick={() => { setActiveTab('focus'); setPomodoroRunning(true); }}>
+                <span className="action-icon">⏱️</span>
+                <span>Start Focus Session</span>
+              </button>
+              <button className="quick-action-btn plan-action" onClick={() => setActiveTab('planner')}>
+                <span className="action-icon">🧠</span>
+                <span>New AI Plan</span>
+              </button>
+              <button className="quick-action-btn task-action" onClick={() => setActiveTab('tasks')}>
+                <span className="action-icon">📝</span>
+                <span>Create Study Task</span>
+              </button>
+              <button className="quick-action-btn clean-action" onClick={() => setTasks(prev => prev.filter(t => !t.done))}>
+                <span className="action-icon">🧹</span>
+                <span>Clear Done Tasks</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* LOWER GRID: RECENT ACTIVITY + UPCOMING TASKS */}
+        <div className="overview-lower-grid">
+          {/* Recent Activity Log */}
+          <div className="db-widget recent-activity-card">
+            <h3>Recent Activity</h3>
+            <div className="activity-list">
+              {activities.length === 0 ? (
+                <p className="no-activity">No recent activities logged yet.</p>
+              ) : (
+                activities.map((act) => (
+                  <div key={act.id} className="activity-item">
+                    <span className="activity-icon-bullet">
+                      {act.type === 'focus' ? '⏱️' : act.type === 'planner' ? '🧠' : act.type === 'task' ? '📝' : '⚡'}
+                    </span>
+                    <div className="activity-body">
+                      <p>{act.text}</p>
+                      <span className="activity-time">{act.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Upcoming tasks quick widget */}
+          <div className="db-widget quick-tasks-card">
+            <div className="widget-header">
+              <h3>Upcoming Tasks Checklist</h3>
+              <button className="btn-text-link" onClick={() => setActiveTab('tasks')}>View all</button>
+            </div>
+            
+            <div className="quick-tasks-list">
+              {tasks.filter(t => !t.done).length === 0 ? (
+                <div className="all-tasks-completed">
+                  <span>🎉</span>
+                  <p>All caught up! No pending tasks.</p>
+                </div>
+              ) : (
+                tasks.filter(t => !t.done).slice(0, 3).map((task) => (
+                  <div key={task.id} className="quick-task-item" onClick={() => toggleTask(task.id)}>
+                    <div className="custom-checkbox">
+                      {task.done && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span className="task-text-content">{task.text}</span>
+                    {task.category && <span className="task-tag-badge">{task.category}</span>}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Quick add input row */}
+            <form onSubmit={handleQuickAddTask} className="quick-add-task-form">
+              <input 
+                type="text" 
+                name="quickTaskText"
+                placeholder="Quick add: Read organic chem notes..." 
+                required
+                className="login-input quick-task-input"
+              />
+              <button type="submit" className="btn-primary-gradient quick-add-btn">+</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPlannerTab = () => {
+    return (
+      <div className="planner-tab-layout">
+        <div className="planner-intro">
+          <h2>AI Study Schedule Generator</h2>
+          <p>Optimize your study sessions with custom timelines generated using neuroscience-backed learning slots.</p>
+        </div>
+        <div className="demo-widget-layout">
+          {/* Re-use form card */}
+          <div className="demo-form-card">
+            <h3>Configure Your Session</h3>
+            <form onSubmit={(e) => {
+              handleGeneratePlan(e);
+              addActivity(`Generated a ${duration} min ${mode} plan for ${subject}`, 'planner');
+            }}>
+              <div className="form-group">
+                <label htmlFor="subject-select">Subject Category</label>
+                <select 
+                  id="subject-select" 
+                  value={subject} 
+                  onChange={(e) => setSubject(e.target.value)}
+                >
+                  <option value="Computer Science">Computer Science & Algorithms</option>
+                  <option value="Organic Chemistry">Organic Chemistry & Bio</option>
+                  <option value="World History">World History & Humanities</option>
+                  <option value="Calculus & Algebra">Calculus & Algebra</option>
+                  <option value="Literature & Essay">Literature & Critical Essay</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Session Duration</label>
+                <div className="radio-button-group">
+                  {[
+                    { label: "1 Hour", val: "60" },
+                    { label: "2 Hours", val: "120" },
+                    { label: "3 Hours", val: "180" },
+                    { label: "4 Hours", val: "244" }
+                  ].map((d) => (
+                    <button
+                      key={d.val}
+                      type="button"
+                      className={`btn-radio ${duration === d.val ? 'active' : ''}`}
+                      onClick={() => setDuration(d.val)}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="study-mode">Study Mode / Focus Technique</label>
+                <select 
+                  id="study-mode" 
+                  value={mode} 
+                  onChange={(e) => setMode(e.target.value)}
+                >
+                  <option value="active-recall">🧠 Active Recall (Self-Testing Focus)</option>
+                  <option value="deep-focus">🎯 Deep Focus (Long Content Exploration)</option>
+                  <option value="cram-mode">⚡ Cram Mode (Rapid Topics Intake)</option>
+                  <option value="spaced-repetition">🔄 Spaced Repetition (Prior Review)</option>
+                </select>
+              </div>
+
+              <button type="submit" className="btn-generate-planner" disabled={plannerLoading}>
+                {plannerLoading ? (
+                  <span className="spinner"></span>
+                ) : (
+                  <span>Calculate Custom Schedule ⚡</span>
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Re-use results card */}
+          <div className="demo-results-card" id="planner-output">
+            {!generatedPlan && !plannerLoading && (
+              <div className="planner-empty-state">
+                <div className="icon-sphere">
+                  <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                  </svg>
+                </div>
+                <h3>Your AI Plan Will Render Here</h3>
+                <p>Set duration and technique parameters, click calculate, and watch your optimized session load instantly.</p>
+              </div>
+            )}
+
+            {plannerLoading && (
+              <div className="planner-loading-state">
+                <div className="pulsing-brain">🧠</div>
+                <h3>Structuring Session Schedule...</h3>
+                <p>Applying neuroscience-backed time splits and active rest cycles.</p>
+              </div>
+            )}
+
+            {generatedPlan && !plannerLoading && (
+              <div className="planner-plan-content">
+                <div className="plan-header">
+                  <div>
+                    <span className="plan-badge">{generatedPlan.modeName}</span>
+                    <h4>{generatedPlan.subject} Session</h4>
+                  </div>
+                  <span className="plan-duration-total">⏰ {generatedPlan.duration} Mins</span>
+                </div>
+
+                <div className="timeline-container">
+                  {generatedPlan.steps.map((step, idx) => (
+                    <div key={idx} className="timeline-item">
+                      <div className={`timeline-indicator ${step.type}`}>
+                        <span>{idx + 1}</span>
+                      </div>
+                      <div className="timeline-content-card">
+                        <div className="timeline-meta">
+                          <span className="timeline-phase">{step.phase}</span>
+                          <span className="timeline-duration">{step.time}</span>
+                        </div>
+                        <h5>{step.title}</h5>
+                        <p>{step.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="plan-actions">
+                  <button className="btn-export-plan" onClick={handleExport}>
+                    Export Schedule to Device
+                  </button>
+                  {successMsg && <div className="success-toast">{successMsg}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFocusTab = () => {
+    const maxSecs = timerMode === 'study' ? 1500 : timerMode === 'short' ? 300 : 900;
+    const strokeDashoffset = maxSecs > 0 ? (pomodoroSeconds / maxSecs) * 628 : 628;
+
+    return (
+      <div className="focus-tab-layout">
+        <div className="focus-header">
+          <h2>Advanced Focus Room</h2>
+          <p>Boost your memory and enter flow state. Choose a time slot and play backing ambient audio.</p>
+        </div>
+
+        <div className="focus-panel-grid">
+          {/* Main Timer Display */}
+          <div className="focus-timer-card">
+            <div className="timer-presets">
+              <button 
+                className={`preset-btn ${timerMode === 'study' ? 'active' : ''}`}
+                onClick={() => handleSwitchTimerMode('study')}
+              >
+                🎯 Study (25m)
+              </button>
+              <button 
+                className={`preset-btn ${timerMode === 'short' ? 'active' : ''}`}
+                onClick={() => handleSwitchTimerMode('short')}
+              >
+                ☕ Short Break (5m)
+              </button>
+              <button 
+                className={`preset-btn ${timerMode === 'long' ? 'active' : ''}`}
+                onClick={() => handleSwitchTimerMode('long')}
+              >
+                🌴 Long Break (15m)
+              </button>
+            </div>
+
+            <div className="timer-radial-outer">
+              <svg width="240" height="240" viewBox="0 0 240 240" className="timer-radial-svg">
+                {/* Track Circle */}
+                <circle 
+                  cx="120" 
+                  cy="120" 
+                  r="100" 
+                  className="radial-track"
+                />
+                {/* Active Indicator Circle */}
+                <circle 
+                  cx="120" 
+                  cy="120" 
+                  r="100" 
+                  className="radial-indicator"
+                  strokeDasharray="628"
+                  strokeDashoffset={strokeDashoffset}
+                  transform="rotate(-90 120 120)"
+                />
+              </svg>
+              {/* Inner details centered absolutely */}
+              <div className="timer-inner-content">
+                <span className="timer-inner-mode">
+                  {timerMode === 'study' ? '🎯 Study Session' : timerMode === 'short' ? '☕ Short Break' : '🌴 Long Break'}
+                </span>
+                <span className="timer-inner-value">{formatTime(pomodoroSeconds)}</span>
+                <span className="timer-inner-desc">
+                  {pomodoroRunning ? 'Timer ticking...' : 'Paused'}
+                </span>
+              </div>
+            </div>
+
+            <div className="timer-actions">
+              <button 
+                className={`btn-timer-action ${pomodoroRunning ? 'running' : ''}`}
+                onClick={() => {
+                  setPomodoroRunning(!pomodoroRunning);
+                  addActivity(pomodoroRunning ? "Paused the focus timer" : "Started the focus timer", 'focus');
+                }}
+              >
+                {pomodoroRunning ? 'Pause Session' : 'Start Focus ⚡'}
+              </button>
+              <button 
+                className="btn-timer-reset" 
+                onClick={() => {
+                  setPomodoroSeconds(maxSecs);
+                  setPomodoroRunning(false);
+                  addActivity("Reset the focus timer", 'focus');
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* Sound & Motivation Side Widgets */}
+          <div className="focus-settings-column">
+            <div className="db-widget sound-settings-card">
+              <h3>Ambient Audio Atmosphere</h3>
+              <p>Tune out distractions with neuroscience-engineered background loops.</p>
+              
+              <div className="form-group">
+                <label htmlFor="sound-select">Sound Profile</label>
+                <select 
+                  id="sound-select"
+                  value={ambientSound}
+                  onChange={(e) => {
+                    setAmbientSound(e.target.value);
+                    addActivity(`Changed focus environment sound to ${e.target.value}`, 'focus');
+                  }}
+                  className="sound-dropdown"
+                >
+                  <option value="none">🔇 Silent Focus</option>
+                  <option value="white-noise">🌫️ Pure White Noise</option>
+                  <option value="rain">🌧️ Autumn Rainfall</option>
+                  <option value="lofi">🎧 Study Lofi Beats</option>
+                </select>
+              </div>
+
+              {ambientSound !== 'none' && (
+                <div className="audio-wave-visualizer">
+                  <span className="status-label">Now playing loop: {ambientSound}</span>
+                  <div className="waves">
+                    <span className="wave-bar active"></span>
+                    <span className="wave-bar active"></span>
+                    <span className="wave-bar active"></span>
+                    <span className="wave-bar active"></span>
+                    <span className="wave-bar active"></span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="db-widget focus-motivation-card">
+              <h3>Focus Guidelines</h3>
+              <ul className="focus-tips-list">
+                <li><strong>No Phones:</strong> Place your device face down in another room.</li>
+                <li><strong>Single Tasking:</strong> Close other tabs. Keep only materials for {subject} open.</li>
+                <li><strong>Breathe:</strong> Take deep diaphragmatic breaths during short break cycles.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTasksTab = () => {
+    const filteredTasks = tasks.filter(t => {
+      if (taskFilter === 'active') return !t.done;
+      if (taskFilter === 'completed') return t.done;
+      return true;
+    });
+
+    return (
+      <div className="tasks-tab-layout">
+        <div className="tasks-header-row">
+          <div>
+            <h2>Task Manager Workspace</h2>
+            <p>Structure your syllabus into manageable study goals. Check completed blocks to boost metrics.</p>
+          </div>
+          <div className="task-filters">
+            <button 
+              className={`filter-tab ${taskFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setTaskFilter('all')}
+            >
+              All ({tasks.length})
+            </button>
+            <button 
+              className={`filter-tab ${taskFilter === 'active' ? 'active' : ''}`}
+              onClick={() => setTaskFilter('active')}
+            >
+              Active ({tasks.filter(t => !t.done).length})
+            </button>
+            <button 
+              className={`filter-tab ${taskFilter === 'completed' ? 'active' : ''}`}
+              onClick={() => setTaskFilter('completed')}
+            >
+              Completed ({tasks.filter(t => t.done).length})
+            </button>
+          </div>
+        </div>
+
+        <div className="tasks-workspace-grid">
+          {/* List display */}
+          <div className="tasks-list-panel">
+            {filteredTasks.length === 0 ? (
+              <div className="tasks-empty-state">
+                <span>📋</span>
+                <h4>No Tasks Found</h4>
+                <p>Add study milestones on the right or change your filter choice.</p>
+              </div>
+            ) : (
+              <div className="task-items-container">
+                {filteredTasks.map((task) => (
+                  <div key={task.id} className={`workspace-task-item ${task.done ? 'done' : ''}`}>
+                    <div className="task-click-area" onClick={() => toggleTask(task.id)}>
+                      <div className="custom-checkbox">
+                        {task.done && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <span className="task-label-text">{task.text}</span>
+                    </div>
+                    
+                    <div className="task-right-meta">
+                      <span className="task-category-tag">{task.category}</span>
+                      <button 
+                        className="delete-task-btn" 
+                        onClick={() => handleDeleteTask(task.id, task.text)}
+                        aria-label="Delete task"
+                      >
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add form card */}
+          <div className="db-widget add-task-card">
+            <h3>Add Study Milestone</h3>
+            <p>Define a concrete topic to master in your next study block.</p>
+            
+            <form onSubmit={handleAddNewTask} className="add-task-form">
+              <div className="form-group">
+                <label htmlFor="task-input-text">Task Objective</label>
+                <input 
+                  type="text" 
+                  id="task-input-text"
+                  name="taskText"
+                  placeholder="e.g. Read Physics Chapter 3 notes" 
+                  required
+                  className="login-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="task-input-category">Subject Tag</label>
+                <select id="task-input-category" name="taskCategory" className="task-tag-select">
+                  <option value="Computer Science">💻 Computer Science</option>
+                  <option value="Chemistry">🧪 Chemistry</option>
+                  <option value="Mathematics">🧮 Mathematics</option>
+                  <option value="Literature">📚 Literature</option>
+                  <option value="General">✨ General/Other</option>
+                </select>
+              </div>
+
+              <button type="submit" className="btn-primary-gradient btn-add-submit">
+                Add Task to List ⚡
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAnalyticsTab = () => {
+    const courses = [
+      { name: "Computer Science & Algorithms", progress: 85, color: "#8B5CF6" },
+      { name: "Organic Chemistry & Biology", progress: 62, color: "#EC4899" },
+      { name: "Calculus & Algebra", progress: 78, color: "#3B82F6" },
+      { name: "Literature & Essay", progress: 90, color: "#06B6D4" }
+    ];
+
+    return (
+      <div className="analytics-tab-layout">
+        <div className="analytics-header">
+          <h2>Academic Analytics & Readiness</h2>
+          <p>Inspect estimates of your course prep status based on focus hours and completed task ratios.</p>
+        </div>
+
+        <div className="analytics-dashboard-grid">
+          {/* Course Readiness Card */}
+          <div className="db-widget course-progress-card">
+            <h3>Course Preparation Scores</h3>
+            <p>Calculated from study milestones checked off and active recall scores.</p>
+            
+            <div className="course-progress-list">
+              {courses.map((course, idx) => (
+                <div key={idx} className="course-progress-item">
+                  <div className="course-meta-row">
+                    <span className="course-name">{course.name}</span>
+                    <span className="course-score-val" style={{ color: course.color }}>{course.progress}% ready</span>
+                  </div>
+                  <div className="course-progress-track">
+                    <div 
+                      className="course-progress-fill" 
+                      style={{ width: `${course.progress}%`, background: course.color }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Efficiency Breakdown Panel */}
+          <div className="analytics-side-panel">
+            <div className="db-widget stats-breakdown-card">
+              <h3>Syllabus Insights</h3>
+              <div className="insights-metrics">
+                <div className="metric-box">
+                  <span className="metric-num">89%</span>
+                  <span className="metric-lbl">Active Recall Accuracy</span>
+                </div>
+                <div className="metric-box">
+                  <span className="metric-num">1.8 hrs</span>
+                  <span className="metric-lbl">Avg Daily Study block</span>
+                </div>
+              </div>
+              <div className="insight-recommendation-note">
+                <span className="recommendation-icon">💡</span>
+                <p><strong>Recommendation:</strong> Your Chemistry focus score is lower than other categories. Schedule a 45-minute Cram Mode block to review basic chemical structures.</p>
+              </div>
+            </div>
+
+            <div className="db-widget study-milestone-banner">
+              <h3>Academic Rank</h3>
+              <div className="rank-badge-row">
+                <span className="rank-badge">🏆 Master Planner</span>
+                <span className="rank-percentage">Top 5% this month</span>
+              </div>
+              <p>Keep up your current study pace to reach Grandmaster tier in Spaced Repetition!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ================= MAIN RENDER ROUTING =================
+
+  if (isLoggedIn && view === 'dashboard') {
+    const completedTasksCount = tasks.filter(t => t.done).length;
+    const totalTasksCount = tasks.length;
+    const completionRate = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+    return (
+      <div className="dashboard-container">
+        {/* SIDEBAR NAVIGATION */}
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-brand" onClick={() => setView('landing')}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <rect width="24" height="24" rx="6" fill="url(#dbLogoGrad)" />
+              <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <defs>
+                <linearGradient id="dbLogoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#8B5CF6"/>
+                  <stop offset="1" stopColor="#EC4899"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <span className="sidebar-logo-text">SmartStudy</span>
+          </div>
+
+          <div className="sidebar-user-card">
+            <div className="sidebar-avatar">
+              {userEmail.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="sidebar-user-info">
+              <span className="user-email" title={userEmail}>{userEmail}</span>
+              <span className="user-tier">Smart Scholar Pro</span>
+            </div>
+          </div>
+
+          <nav className="sidebar-nav">
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+              </svg>
+              <span>Overview</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'planner' ? 'active' : ''}`}
+              onClick={() => setActiveTab('planner')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>AI Study Planner</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'focus' ? 'active' : ''}`}
+              onClick={() => setActiveTab('focus')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Focus Timer</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tasks')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Task Manager</span>
+              {tasks.filter(t => !t.done).length > 0 && (
+                <span className="sidebar-badge">{tasks.filter(t => !t.done).length}</span>
+              )}
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analytics')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>Analytics</span>
+            </button>
+          </nav>
+
+          <div className="sidebar-footer">
+            <button className="sidebar-theme-btn" onClick={handleToggleTheme}>
+              {theme === 'dark' ? (
+                <>
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                  </svg>
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+
+            <button className="sidebar-logout-btn" onClick={handleLogout}>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT AREA */}
+        <main className="dashboard-main-content">
+          {/* Header bar */}
+          <header className="dashboard-header-bar">
+            <div className="header-greeting">
+              <h1>Welcome back! 👋</h1>
+              <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+            <div className="header-actions">
+              <span className="streak-badge-container" title="Daily study streak">
+                <span className="fire-emoji">🔥</span>
+                <span className="streak-count">{studyStreak} Day Streak</span>
+              </span>
+              <button className="btn-primary-gradient btn-quick-plan" onClick={() => setActiveTab('planner')}>
+                ⚡ Quick Plan
+              </button>
+            </div>
+          </header>
+
+          {/* ACTIVE TAB CONTENT */}
+          <div className="dashboard-tab-content">
+            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'planner' && renderPlannerTab()}
+            {activeTab === 'focus' && renderFocusTab()}
+            {activeTab === 'tasks' && renderTasksTab()}
+            {activeTab === 'analytics' && renderAnalyticsTab()}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ================= RENDER REGISTER VIEW =================
+  if (view === 'register') {
+    const regEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail);
+    const pwdStrength   = getPasswordStrength(formPassword);
+    const confirmMatch  = formConfirmPassword.length > 0 && formPassword === formConfirmPassword;
+    const confirmMiss   = formConfirmPassword.length > 0 && formPassword !== formConfirmPassword;
+
+    return (
+      <div className="register-page">
+        {/* ── LEFT BRANDING PANEL ── */}
+        <aside className="register-left-panel">
+          <div className="reg-left-inner">
+            {/* Logo */}
+            <div className="reg-logo" onClick={() => setView('landing')}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <rect width="24" height="24" rx="6" fill="url(#rLogoGrad)" />
+                <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="rLogoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#8B5CF6"/>
+                    <stop offset="1" stopColor="#EC4899"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>SmartStudy</span>
+            </div>
+
+            {/* Headline */}
+            <div className="reg-left-headline">
+              <h1>Your academic edge <span className="reg-highlight">starts here.</span></h1>
+              <p>Join 50,000+ students who study smarter, not longer — with personalized AI schedules and science-backed focus tools.</p>
+            </div>
+
+            {/* Benefits */}
+            <ul className="reg-benefits-list">
+              <li>
+                <span className="reg-benefit-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </span>
+                <div>
+                  <strong>AI-powered study schedules</strong>
+                  <span>Built around your exams, free hours, and learning pace.</span>
+                </div>
+              </li>
+              <li>
+                <span className="reg-benefit-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                </span>
+                <div>
+                  <strong>Active Recall &amp; Spaced Repetition</strong>
+                  <span>Neuroscience-backed techniques that double your retention.</span>
+                </div>
+              </li>
+              <li>
+                <span className="reg-benefit-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </span>
+                <div>
+                  <strong>Pomodoro focus timers</strong>
+                  <span>Beat procrastination with timed sessions and analytics.</span>
+                </div>
+              </li>
+              <li>
+                <span className="reg-benefit-icon">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                </span>
+                <div>
+                  <strong>Grade analytics dashboard</strong>
+                  <span>Track readiness scores and spot weak areas early.</span>
+                </div>
+              </li>
+            </ul>
+
+            {/* Testimonial */}
+            <div className="reg-testimonial-card">
+              <div className="reg-quote-mark">&ldquo;</div>
+              <p>Went from C's to Dean's List in one semester. The schedule builder does all the heavy lifting.</p>
+              <div className="reg-testimonial-author">
+                <span className="reg-author-avatar">PS</span>
+                <div>
+                  <strong>Priya S.</strong>
+                  <span>Stanford University, Class of &apos;25</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Decorative orbs */}
+          <div className="reg-orb reg-orb-1"></div>
+          <div className="reg-orb reg-orb-2"></div>
+        </aside>
+
+        {/* ── RIGHT FORM PANEL ── */}
+        <main className="register-right-panel">
+          {/* Top bar */}
+          <div className="reg-top-bar">
+            <button className="theme-toggle-btn" onClick={handleToggleTheme} aria-label="Toggle Theme">
+              {theme === 'dark' ? (
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <span className="reg-signin-prompt">
+              Already have an account?
+              <button className="btn-toggle-auth-tier" onClick={() => { setView('login'); setFormError(''); }}>
+                Sign In
+              </button>
+            </span>
+          </div>
+
+          {/* Form card */}
+          <div className="register-form-wrapper">
+            <div className="register-form-card">
+              <div className="register-form-header">
+                <h2>Create your account</h2>
+                <p>Free forever. No credit card required.</p>
+              </div>
+
+              {/* Social sign-up */}
+              <div className="social-login-grid reg-social-grid">
+                <button className="btn-social-auth" onClick={() => handleSocialLogin('google')} disabled={registerLoading}>
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.7-1.56 2.69-3.86 2.69-6.6z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853"/>
+                    <path d="M3.96 10.69A5.4 5.4 0 0 1 3.68 9c0-.58.1-1.15.28-1.69V4.98H.96A8.99 8.99 0 0 0 0 9c0 1.48.36 2.88.96 4.14l3-2.45z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.02A8.99 8.99 0 0 0 9 0 9 9 0 0 0 .96 4.98l3 2.45c.71-2.13 2.7-3.71 5.04-3.71z" fill="#EA4335"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+                <button className="btn-social-auth" onClick={() => handleSocialLogin('apple')} disabled={registerLoading}>
+                  <svg width="16" height="18" viewBox="0 0 16 18" fill="currentColor">
+                    <path d="M13.68 9.87c.03-2.35 1.94-3.48 2.03-3.53-1.1-1.61-2.82-1.83-3.42-1.87-1.45-.15-2.83.85-3.57.85-.73 0-1.9-.83-3.13-.81-1.62.02-3.12.94-3.96 2.39-1.69 2.93-.43 7.26 1.2 9.61.8 1.15 1.74 2.44 2.99 2.39 1.2-.05 1.66-.77 3.11-.77 1.44 0 1.86.77 3.12.74 1.28-.02 2.1-.1.17-1.17-1.07-1.57-1.85-3.48-1.85-5.91-.01-.03-.01-.07-.01-.1zm-2.45-6.84c.65-.79 1.09-1.88.97-2.97-.94.04-2.08.63-2.75 1.41-.58.67-1.09 1.78-.95 2.85.94.07 2.01-.5 2.73-1.29z" />
+                  </svg>
+                  <span>Apple</span>
+                </button>
+                <button className="btn-social-auth" onClick={() => handleSocialLogin('github')} disabled={registerLoading}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M9 0C4.03 0 0 4.03 0 9c0 3.98 2.58 7.35 6.16 8.54.45.08.61-.2.61-.43 0-.21-.01-.78-.01-1.53-2.5.54-3.03-1.21-3.03-1.21-.41-1.04-1-1.32-1-1.32-.82-.56.06-.55.06-.55.9.06 1.38.93 1.38.93.8 1.38 2.12.98 2.63.75.08-.58.31-.98.57-1.21-2-.23-4.1-1-4.1-4.46 0-.98.35-1.79.93-2.42-.09-.23-.4-1.14.09-2.39 0 0 .76-.24 2.47.92A8.6 8.6 0 019 4.88c.77.004 1.54.1 2.27.3 1.7-1.16 2.46-.92 2.46-.92.49 1.25.18 2.16.09 2.39.58.63.93 1.44.93 2.42 0 3.48-2.1 4.22-4.11 4.45.32.28.62.83.62 1.68 0 1.21-.01 2.19-.01 2.49 0 .24.16.52.62.43C15.42 16.35 18 12.98 18 9c0-4.97-4.03-9-9-9z" />
+                  </svg>
+                  <span>GitHub</span>
+                </button>
+              </div>
+
+              <div className="auth-separator"><span>or sign up with email</span></div>
+
+              {registerError   && <div className="auth-error-alert">{registerError}</div>}
+              {registerSuccess && <div className="auth-success-alert">{registerSuccess}</div>}
+
+              <form onSubmit={handleRegisterSubmit} className="register-form">
+                {/* Full Name */}
+                <div className="form-group">
+                  <label htmlFor="reg-fullname">Full Name</label>
+                  <input
+                    type="text"
+                    id="reg-fullname"
+                    placeholder="Alex Rivera"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    required
+                    className="login-input"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="form-group">
+                  <label htmlFor="reg-email">Student Email</label>
+                  <div className="input-with-verification">
+                    <input
+                      type="email"
+                      id="reg-email"
+                      placeholder="alex@stanford.edu"
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      required
+                      className="login-input"
+                    />
+                    {regEmailValid && (
+                      <span className="email-verify-checkmark">
+                        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+                          <path d="M1 5L4.5 8.5L11 1" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="form-group">
+                  <label htmlFor="reg-password">Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      id="reg-password"
+                      placeholder="Min. 8 characters"
+                      value={formPassword}
+                      onChange={(e) => setFormPassword(e.target.value)}
+                      required
+                      className="login-input password-input"
+                    />
+                    <button type="button" className="show-password-btn" onClick={() => setShowPassword(!showPassword)} aria-label="Toggle password">
+                      {showPassword ? (
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Password strength meter */}
+                  {formPassword.length > 0 && (
+                    <div className="pwd-strength-container">
+                      <div className="pwd-strength-bar">
+                        {[1,2,3,4,5].map(seg => (
+                          <div
+                            key={seg}
+                            className="pwd-strength-segment"
+                            style={{ backgroundColor: pwdStrength.score >= seg ? pwdStrength.color : undefined }}
+                          />
+                        ))}
+                      </div>
+                      <span className="pwd-strength-label" style={{ color: pwdStrength.color }}>
+                        {pwdStrength.label}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div className="form-group">
+                  <label htmlFor="reg-confirm">Confirm Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      id="reg-confirm"
+                      placeholder="Re-enter your password"
+                      value={formConfirmPassword}
+                      onChange={(e) => setFormConfirmPassword(e.target.value)}
+                      required
+                      className={`login-input password-input ${
+                        confirmMatch ? 'input-match' : confirmMiss ? 'input-mismatch' : ''
+                      }`}
+                    />
+                    <button type="button" className="show-password-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label="Toggle confirm password">
+                      {showConfirmPassword ? (
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  {confirmMatch && <p className="field-hint match">✓ Passwords match</p>}
+                  {confirmMiss  && <p className="field-hint mismatch">✗ Passwords do not match</p>}
+                </div>
+
+                {/* Terms of Service */}
+                <div className="terms-row">
+                  <label className="remember-me-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={() => setTermsAccepted(!termsAccepted)}
+                    />
+                    <span className="checkbox-custom-box">
+                      {termsAccepted && (
+                        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </span>
+                    <span className="checkbox-label-text">
+                      I agree to the{' '}
+                      <button type="button" className="btn-terms-link" onClick={() => alert('Terms of Service — coming soon!')}>Terms of Service</button>
+                      {' '}and{' '}
+                      <button type="button" className="btn-terms-link" onClick={() => alert('Privacy Policy — coming soon!')}>Privacy Policy</button>
+                    </span>
+                  </label>
+                </div>
+
+                {/* Submit */}
+                <button type="submit" className="btn-primary-gradient btn-login-submit btn-register-submit" disabled={registerLoading}>
+                  {registerLoading ? <span className="spinner"></span> : <span>Create Free Account ⚡</span>}
+                </button>
+              </form>
+
+              <p className="reg-signin-footer">
+                Already have an account?{' '}
+                <button className="btn-toggle-auth-tier" onClick={() => { setView('login'); setFormError(''); }}>
+                  Sign In
+                </button>
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // ================= RENDER LOGIN VIEW =================
   if (view === 'login') {
@@ -470,17 +1813,18 @@ function App() {
               {/* Form Bottom Switcher */}
               <div className="login-card-footer">
                 <p>
-                  {isSignUp ? 'Already have an account?' : "Don't have an account yet?"}
-                  <button 
-                    type="button" 
+                  Don&apos;t have an account yet?
+                  <button
+                    type="button"
                     className="btn-toggle-auth-tier"
                     onClick={() => {
-                      setIsSignUp(!isSignUp);
+                      setView('register');
                       setFormError('');
                       setFormSuccess('');
+                      setRegisterError('');
                     }}
                   >
-                    {isSignUp ? 'Sign In' : 'Create Student Account'}
+                    Create Student Account
                   </button>
                 </p>
               </div>
