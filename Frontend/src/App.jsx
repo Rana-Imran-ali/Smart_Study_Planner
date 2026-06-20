@@ -70,6 +70,13 @@ function App() {
   const [ambientSound, setAmbientSound] = useState('none');
   const [taskFilter, setTaskFilter] = useState('all');
   
+  // Task search, filter, and sort state
+  const [taskSearchQuery, setTaskSearchQuery] = useState('');
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState('all');
+  const [taskSortBy, setTaskSortBy] = useState('dueDate');
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  
   // Login form state
   const [isSignUp, setIsSignUp] = useState(false);
   const [formName, setFormName] = useState('');
@@ -115,16 +122,25 @@ function App() {
     const saved = localStorage.getItem('ss_tasks');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Migrate legacy tasks that don't have priority, dueDate, status, description, or estimatedTime
+        return parsed.map(t => ({
+          ...t,
+          priority: t.priority || 'medium',
+          dueDate: t.dueDate || new Date().toISOString().split('T')[0],
+          status: t.status || (t.done ? 'completed' : 'todo'),
+          description: t.description || '',
+          estimatedTime: t.estimatedTime || '30'
+        }));
       } catch (e) {
         console.error(e);
       }
     }
     return [
-      { id: 1, text: "Read Chapter 4 (Logic Gates)", done: true, category: "Computer Science" },
-      { id: 2, text: "Write binary tree code proof", done: false, category: "Computer Science" },
-      { id: 3, text: "Complete 15m review flashcards", done: false, category: "General" },
-      { id: 4, text: "Study organic chemistry pathways", done: false, category: "Chemistry" }
+      { id: 1, text: "Read Chapter 4 (Logic Gates)", done: true, category: "Computer Science", priority: "high", dueDate: new Date().toISOString().split('T')[0], status: "completed", description: "Read pages 120-145 and take notes on XOR gates.", estimatedTime: "45" },
+      { id: 2, text: "Write binary tree code proof", done: false, category: "Computer Science", priority: "high", dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], status: "in_progress", description: "Implement recursive deletion and construct complexity proof.", estimatedTime: "90" },
+      { id: 3, text: "Complete 15m review flashcards", done: false, category: "General", priority: "low", dueDate: new Date(Date.now() + 432000000).toISOString().split('T')[0], status: "todo", description: "Test spaced repetition deck on general knowledge.", estimatedTime: "15" },
+      { id: 4, text: "Study organic chemistry pathways", done: false, category: "Chemistry", priority: "medium", dueDate: new Date(Date.now() - 86400000).toISOString().split('T')[0], status: "todo", description: "Draw pathway diagram for esterification and hydrolysis.", estimatedTime: "60" }
     ];
   });
 
@@ -204,8 +220,24 @@ function App() {
     setTasks(prev => prev.map(t => {
       if (t.id === id) {
         const newDone = !t.done;
+        const newStatus = newDone ? 'completed' : 'todo';
         addActivity(newDone ? `Completed task "${t.text}" 🎉` : `Marked task "${t.text}" as pending`, 'task');
-        return { ...t, done: newDone };
+        return { ...t, done: newDone, status: newStatus };
+      }
+      return t;
+    }));
+  };
+
+  const cycleTaskStatus = (id) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) {
+        let newStatus = 'todo';
+        if (t.status === 'todo') newStatus = 'in_progress';
+        else if (t.status === 'in_progress') newStatus = 'completed';
+        
+        const newDone = newStatus === 'completed';
+        addActivity(`Updated task "${t.text}" status to ${newStatus === 'in_progress' ? 'In Progress ⏳' : newStatus === 'completed' ? 'Completed 🎉' : 'To Do 📋'}`, 'task');
+        return { ...t, status: newStatus, done: newDone };
       }
       return t;
     }));
@@ -439,7 +471,12 @@ function App() {
       id: Date.now(),
       text,
       done: false,
-      category: "General"
+      category: "General",
+      priority: "medium",
+      dueDate: new Date().toISOString().split('T')[0],
+      status: "todo",
+      description: "",
+      estimatedTime: "30"
     };
 
     setTasks(prev => [...prev, newTask]);
@@ -451,18 +488,28 @@ function App() {
     e.preventDefault();
     const text = e.target.elements.taskText.value.trim();
     const category = e.target.elements.taskCategory.value;
+    const priority = e.target.elements.taskPriority.value || 'medium';
+    const dueDate = e.target.elements.taskDueDate.value || new Date().toISOString().split('T')[0];
+    const description = e.target.elements.taskDescription.value.trim() || '';
+    const estimatedTime = e.target.elements.taskEstimatedTime.value || '30';
     if (!text) return;
 
     const newTask = {
       id: Date.now(),
       text,
       done: false,
-      category
+      category,
+      priority,
+      dueDate,
+      status: "todo",
+      description,
+      estimatedTime
     };
 
     setTasks(prev => [...prev, newTask]);
-    addActivity(`Created task "${text}" under ${category}`, 'task');
+    addActivity(`Created task "${text}" (${priority} priority) due ${dueDate}`, 'task');
     e.target.reset();
+    setIsTaskModalOpen(false);
   };
 
   const handleDeleteTask = (id, text) => {
@@ -958,11 +1005,74 @@ function App() {
   };
 
   const renderTasksTab = () => {
-    const filteredTasks = tasks.filter(t => {
-      if (taskFilter === 'active') return !t.done;
-      if (taskFilter === 'completed') return t.done;
+    // Helper to calculate due date labels and classes
+    const getDueDateInfo = (dateStr) => {
+      if (!dateStr) return { text: 'No Due Date', type: 'none' };
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (dateStr === todayStr) {
+        return { text: '📅 Today', type: 'today' };
+      }
+      const today = new Date(todayStr);
+      const due = new Date(dateStr);
+      const diffTime = due.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return { text: `⚠️ Overdue (${Math.abs(diffDays)}d)`, type: 'overdue' };
+      } else if (diffDays === 1) {
+        return { text: '📅 Tomorrow', type: 'tomorrow' };
+      } else {
+        return { text: `📅 in ${diffDays} days`, type: 'upcoming' };
+      }
+    };
+
+    // Filter tasks based on UI selections
+    let filteredTasks = tasks.filter(t => {
+      // 1. Status Filter (tabs)
+      if (taskFilter === 'active' && t.done) return false;
+      if (taskFilter === 'completed' && !t.done) return false;
+
+      // 2. Category Filter (select dropdown)
+      if (taskCategoryFilter !== 'all' && t.category !== taskCategoryFilter) return false;
+
+      // 3. Priority Filter (select dropdown)
+      if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
+
+      // 4. Search Query (text input)
+      if (taskSearchQuery.trim() !== '') {
+        const query = taskSearchQuery.toLowerCase();
+        const matchesText = t.text.toLowerCase().includes(query);
+        const matchesCategory = t.category.toLowerCase().includes(query);
+        if (!matchesText && !matchesCategory) return false;
+      }
+
       return true;
     });
+
+    // Sort tasks
+    filteredTasks.sort((a, b) => {
+      if (taskSortBy === 'dueDate') {
+        const dateA = a.dueDate || '9999-12-31';
+        const dateB = b.dueDate || '9999-12-31';
+        return dateA.localeCompare(dateB);
+      }
+      if (taskSortBy === 'priority') {
+        const priorityWeight = { high: 3, medium: 2, low: 1 };
+        const weightA = priorityWeight[a.priority] || 2;
+        const weightB = priorityWeight[b.priority] || 2;
+        return weightB - weightA; // High priority first
+      }
+      if (taskSortBy === 'text') {
+        return a.text.localeCompare(b.text);
+      }
+      return 0;
+    });
+
+    // Counts for stats panel
+    const totalCount = tasks.length;
+    const completedCount = tasks.filter(t => t.done).length;
+    const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
+    const pendingCount = tasks.filter(t => t.status === 'todo').length;
 
     return (
       <div className="tasks-tab-layout">
@@ -971,25 +1081,120 @@ function App() {
             <h2>Task Manager Workspace</h2>
             <p>Structure your syllabus into manageable study goals. Check completed blocks to boost metrics.</p>
           </div>
-          <div className="task-filters">
+          <div className="header-actions-group">
             <button 
-              className={`filter-tab ${taskFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setTaskFilter('all')}
+              type="button" 
+              onClick={() => setIsTaskModalOpen(true)} 
+              className="btn-primary-gradient btn-add-task-modal-trigger"
             >
-              All ({tasks.length})
+              ✨ Add Milestone
             </button>
-            <button 
-              className={`filter-tab ${taskFilter === 'active' ? 'active' : ''}`}
-              onClick={() => setTaskFilter('active')}
-            >
-              Active ({tasks.filter(t => !t.done).length})
-            </button>
-            <button 
-              className={`filter-tab ${taskFilter === 'completed' ? 'active' : ''}`}
-              onClick={() => setTaskFilter('completed')}
-            >
-              Completed ({tasks.filter(t => t.done).length})
-            </button>
+            <div className="task-filters">
+              <button 
+                className={`filter-tab ${taskFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setTaskFilter('all')}
+              >
+                All ({tasks.length})
+              </button>
+              <button 
+                className={`filter-tab ${taskFilter === 'active' ? 'active' : ''}`}
+                onClick={() => setTaskFilter('active')}
+              >
+                Active ({tasks.filter(t => !t.done).length})
+              </button>
+              <button 
+                className={`filter-tab ${taskFilter === 'completed' ? 'active' : ''}`}
+                onClick={() => setTaskFilter('completed')}
+              >
+                Completed ({tasks.filter(t => t.done).length})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* METRICS ROW */}
+        <div className="task-stats-row">
+          <div className="task-stat-card total">
+            <div className="stat-card-glow"></div>
+            <span className="stat-value">{totalCount}</span>
+            <span className="stat-label">Total Goals</span>
+          </div>
+          <div className="task-stat-card todo">
+            <div className="stat-card-glow"></div>
+            <span className="stat-value">{pendingCount}</span>
+            <span className="stat-label">To Do</span>
+          </div>
+          <div className="task-stat-card progress">
+            <div className="stat-card-glow"></div>
+            <span className="stat-value">{inProgressCount}</span>
+            <span className="stat-label">In Progress</span>
+          </div>
+          <div className="task-stat-card completed">
+            <div className="stat-card-glow"></div>
+            <span className="stat-value">{completedCount}</span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+
+        {/* SEARCH AND FILTERS BAR */}
+        <div className="task-toolbar">
+          <div className="task-toolbar-left">
+            <div className="search-bar-container">
+              <svg className="search-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input 
+                type="text" 
+                placeholder="Search study goals..." 
+                value={taskSearchQuery}
+                onChange={(e) => setTaskSearchQuery(e.target.value)}
+                className="task-search-input"
+              />
+              {taskSearchQuery && (
+                <button type="button" onClick={() => setTaskSearchQuery('')} className="clear-search-btn" title="Clear Search">×</button>
+              )}
+            </div>
+
+            <div className="toolbar-selects">
+              <select 
+                value={taskCategoryFilter} 
+                onChange={(e) => setTaskCategoryFilter(e.target.value)}
+                className="toolbar-select"
+              >
+                <option value="all">📚 All Subjects</option>
+                <option value="Computer Science">💻 Computer Science</option>
+                <option value="Chemistry">🧪 Chemistry</option>
+                <option value="Mathematics">🧮 Mathematics</option>
+                <option value="Literature">📚 Literature</option>
+                <option value="General">✨ General/Other</option>
+              </select>
+
+              <select 
+                value={taskPriorityFilter} 
+                onChange={(e) => setTaskPriorityFilter(e.target.value)}
+                className="toolbar-select"
+              >
+                <option value="all">⚡ All Priorities</option>
+                <option value="high">🔴 High Priority</option>
+                <option value="medium">🟡 Medium Priority</option>
+                <option value="low">🟢 Low Priority</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="task-toolbar-right">
+            <div className="sort-group">
+              <span className="sort-label-text">Sort By:</span>
+              <select 
+                value={taskSortBy} 
+                onChange={(e) => setTaskSortBy(e.target.value)}
+                className="toolbar-select sort-select"
+              >
+                <option value="dueDate">📅 Due Date</option>
+                <option value="priority">🔥 Priority</option>
+                <option value="text">🔤 Alphabetical</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -998,78 +1203,234 @@ function App() {
           <div className="tasks-list-panel">
             {filteredTasks.length === 0 ? (
               <div className="tasks-empty-state">
-                <span>📋</span>
+                <span>🔍</span>
                 <h4>No Tasks Found</h4>
-                <p>Add study milestones on the right or change your filter choice.</p>
+                <p>Try refining your search query or subject/priority filters.</p>
               </div>
             ) : (
               <div className="task-items-container">
-                {filteredTasks.map((task) => (
-                  <div key={task.id} className={`workspace-task-item ${task.done ? 'done' : ''}`}>
-                    <div className="task-click-area" onClick={() => toggleTask(task.id)}>
-                      <div className="custom-checkbox">
-                        {task.done && (
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
+                {filteredTasks.map((task) => {
+                  const dueDateInfo = getDueDateInfo(task.dueDate);
+                  return (
+                    <div key={task.id} className={`workspace-task-item ${task.done ? 'done' : ''} priority-${task.priority}`}>
+                      <div className="task-click-area" onClick={() => toggleTask(task.id)}>
+                        <div className={`custom-checkbox status-${task.status}`}>
+                          {task.done && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                          {!task.done && task.status === 'in_progress' && (
+                            <div className="checkbox-in-progress-dot"></div>
+                          )}
+                        </div>
+                        <div className="task-item-body">
+                          <span className="task-label-text">{task.text}</span>
+                          {task.description && (
+                            <p className="task-desc-text">{task.description}</p>
+                          )}
+                        </div>
                       </div>
-                      <span className="task-label-text">{task.text}</span>
+                      
+                      <div className="task-right-meta">
+                        {/* Estimated study time tag */}
+                        {task.estimatedTime && (
+                          <span className="task-time-badge" title="Estimated Study Time">
+                            ⏱️ {task.estimatedTime}m
+                          </span>
+                        )}
+
+                        {/* Due Date urgency badge */}
+                        <span className={`task-date-badge date-${dueDateInfo.type}`}>
+                          {dueDateInfo.text}
+                        </span>
+
+                        {/* Subject Category tag */}
+                        <span className="task-category-tag">{task.category}</span>
+
+                        {/* Priority badge */}
+                        <span className={`task-priority-badge priority-${task.priority}`}>
+                          {task.priority.toUpperCase()}
+                        </span>
+
+                        {/* Status Toggle Cycle */}
+                        <button 
+                          type="button"
+                          className={`task-status-badge status-${task.status}`}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Avoid double toggling via click area
+                            cycleTaskStatus(task.id);
+                          }}
+                          title="Click to cycle status (To Do -> In Progress -> Completed)"
+                        >
+                          {task.status === 'completed' && '✅ Completed'}
+                          {task.status === 'in_progress' && '⏳ In Progress'}
+                          {task.status === 'todo' && '📋 To Do'}
+                        </button>
+
+                        <button 
+                          className="delete-task-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent toggling when clicking delete
+                            handleDeleteTask(task.id, task.text);
+                          }}
+                          aria-label="Delete task"
+                        >
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="task-right-meta">
-                      <span className="task-category-tag">{task.category}</span>
-                      <button 
-                        className="delete-task-btn" 
-                        onClick={() => handleDeleteTask(task.id, task.text)}
-                        aria-label="Delete task"
-                      >
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Add form card */}
-          <div className="db-widget add-task-card">
-            <h3>Add Study Milestone</h3>
-            <p>Define a concrete topic to master in your next study block.</p>
+          {/* Guidelines sidebar card */}
+          <div className="db-widget task-guidelines-card">
+            <h3>Milestone Guidelines</h3>
+            <p>Maintain your study streak by managing daily milestones effectively.</p>
             
-            <form onSubmit={handleAddNewTask} className="add-task-form">
-              <div className="form-group">
-                <label htmlFor="task-input-text">Task Objective</label>
-                <input 
-                  type="text" 
-                  id="task-input-text"
-                  name="taskText"
-                  placeholder="e.g. Read Physics Chapter 3 notes" 
-                  required
-                  className="login-input"
-                />
+            <div className="guidelines-content">
+              <div className="guideline-tip">
+                <span className="tip-icon">🎯</span>
+                <div className="tip-details">
+                  <strong>Deconstruct Goals</strong>
+                  <span>Break complex subjects into small, 30-to-90 minute conceptual blocks.</span>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="task-input-category">Subject Tag</label>
-                <select id="task-input-category" name="taskCategory" className="task-tag-select">
-                  <option value="Computer Science">💻 Computer Science</option>
-                  <option value="Chemistry">🧪 Chemistry</option>
-                  <option value="Mathematics">🧮 Mathematics</option>
-                  <option value="Literature">📚 Literature</option>
-                  <option value="General">✨ General/Other</option>
-                </select>
+              <div className="guideline-tip">
+                <span className="tip-icon">⚡</span>
+                <div className="tip-details">
+                  <strong>Status Tracking</strong>
+                  <span>Update tasks to 'In Progress' to log active recall focus time in metrics.</span>
+                </div>
               </div>
 
-              <button type="submit" className="btn-primary-gradient btn-add-submit">
-                Add Task to List ⚡
-              </button>
-            </form>
+              <div className="guideline-tip">
+                <span className="tip-icon">📅</span>
+                <div className="tip-details">
+                  <strong>Deadline Focus</strong>
+                  <span>Sort by Due Date to highlight overdue or immediate goals.</span>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => setIsTaskModalOpen(true)}
+              className="btn-primary-gradient btn-add-milestone-sidebar"
+            >
+              ⚡ Open Modal Creator
+            </button>
           </div>
         </div>
+
+        {/* TASK CREATION MODAL OVERLAY */}
+        {isTaskModalOpen && (
+          <div className="task-modal-overlay" onClick={() => setIsTaskModalOpen(false)}>
+            <div className="task-modal-container" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>✨ Create Study Milestone</h3>
+                <button type="button" className="modal-close-btn" onClick={() => setIsTaskModalOpen(false)}>×</button>
+              </div>
+
+              <form onSubmit={handleAddNewTask} className="modal-task-form">
+                <div className="modal-form-grid">
+                  {/* Left Column */}
+                  <div className="modal-form-left">
+                    <div className="form-group">
+                      <label htmlFor="modal-task-text">Objective / Title</label>
+                      <input 
+                        type="text" 
+                        id="modal-task-text"
+                        name="taskText"
+                        placeholder="e.g. Read Physics Chapter 3 notes" 
+                        required
+                        className="login-input"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="modal-task-desc">Detailed Description</label>
+                      <textarea 
+                        id="modal-task-desc"
+                        name="taskDescription"
+                        placeholder="Detail specific subtopics, reference pages, active recall prompts..." 
+                        rows="4"
+                        className="login-input textarea-input"
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="modal-form-right">
+                    <div className="form-group">
+                      <label htmlFor="modal-task-category">Subject Category</label>
+                      <select id="modal-task-category" name="taskCategory" className="task-tag-select">
+                        <option value="Computer Science">💻 Computer Science</option>
+                        <option value="Chemistry">🧪 Chemistry</option>
+                        <option value="Mathematics">🧮 Mathematics</option>
+                        <option value="Literature">📚 Literature</option>
+                        <option value="General">✨ General/Other</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="modal-task-priority">Priority Level</label>
+                      <select id="modal-task-priority" name="taskPriority" className="task-tag-select">
+                        <option value="low">🟢 Low Priority</option>
+                        <option value="medium" defaultValue>🟡 Medium Priority</option>
+                        <option value="high">🔴 High Priority</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group-row">
+                      <div className="form-group">
+                        <label htmlFor="modal-task-duedate">Deadline (Due Date)</label>
+                        <input 
+                          type="date" 
+                          id="modal-task-duedate"
+                          name="taskDueDate"
+                          defaultValue={new Date().toISOString().split('T')[0]}
+                          required
+                          className="login-input"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="modal-task-time">Estimated Time (mins)</label>
+                        <input 
+                          type="number" 
+                          id="modal-task-time"
+                          name="taskEstimatedTime"
+                          placeholder="e.g. 45"
+                          min="1"
+                          max="480"
+                          defaultValue="30"
+                          required
+                          className="login-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn-secondary-outline btn-cancel" onClick={() => setIsTaskModalOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary-gradient btn-save">
+                    Save Milestone ⚡
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
