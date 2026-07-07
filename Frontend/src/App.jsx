@@ -62,7 +62,7 @@ function App() {
   });
 
   // Dashboard state
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [studyStreak, setStudyStreak] = useState(7);
   const [averageFocusScore, setAverageFocusScore] = useState(94);
   const [totalStudyTime, setTotalStudyTime] = useState(18.5);
@@ -103,11 +103,60 @@ function App() {
   const [plannerLoading, setPlannerLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Pricing Toggle state
-  const [billingPeriod, setBillingPeriod] = useState('monthly');
-
   // FAQ Accordion state
   const [activeFaq, setActiveFaq] = useState(null);
+
+  // Calendar state
+  const [events, setEvents] = useState([
+    { id: 1, title: 'CS Logic Gates Study', date: '2026-07-08', time: '09:00' },
+    { id: 2, title: 'Organic Chem Quiz Review', date: '2026-07-10', time: '14:30' },
+    { id: 3, title: 'Calculus Homework Due', date: '2026-07-14', time: '23:59' },
+    { id: 4, title: 'Literature Essay Writing', date: '2026-07-16', time: '11:00' }
+  ]);
+  const [selectedDate, setSelectedDate] = useState('2026-07-07');
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventTime, setNewEventTime] = useState('09:00');
+
+  // Goals state
+  const [goals, setGoals] = useState([
+    { id: 1, text: 'Complete CS Logic Gates Prep', progress: 80, category: 'Computer Science' },
+    { id: 2, text: 'Study 20 Hours this week', progress: 65, category: 'General' },
+    { id: 3, text: 'Finish Chemistry Pathway drawings', progress: 25, category: 'Chemistry' },
+    { id: 4, text: 'Draft Literature Critical Review', progress: 0, category: 'Literature' }
+  ]);
+  const [newGoalText, setNewGoalText] = useState('');
+  const [newGoalCategory, setNewGoalCategory] = useState('General');
+
+  // Notes state
+  const [notes, setNotes] = useState([
+    { id: 1, title: 'CS Logic Gates Notes', content: 'XOR logic: inputs must be different. NAND and NOR gates are universal gates. Review Boolean algebra proofs before exams.', category: 'Computer Science', date: 'Jul 6, 2026' },
+    { id: 2, title: 'Organic Chemistry Pathways', content: 'Esterification: Acid + Alcohol -> Ester + Water. Hydrolysis is reverse. Speed up reaction using acid catalyst (e.g. H2SO4).', category: 'Chemistry', date: 'Jul 5, 2026' }
+  ]);
+  const [activeNoteId, setActiveNoteId] = useState(1);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteCategory, setNoteCategory] = useState('General');
+
+  // AI Assistant state
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, sender: 'ai', text: 'Hello! I am your AI Study Coach. How can I help you master your classes today? Try asking me how to organize your day or explain a study technique.' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isAiTyping, setIsAiTyping] = useState(false);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: 'Welcome back! You have 3 tasks due today.', time: 'Just now', read: false },
+    { id: 2, text: 'Chemistry homework is past due date.', time: '2 hours ago', read: false },
+    { id: 3, text: 'Export completed: study session synced to calendar.', time: '3 hours ago', read: true },
+    { id: 4, text: 'Daily study streak unlocked: 7 days in a row! 🔥', time: '1 day ago', read: true }
+  ]);
+
+  // Profile state
+  const [profileName, setProfileName] = useState('Alex Rivera');
+  const [profileEmail, setProfileEmail] = useState(() => localStorage.getItem('ss_userEmail') || 'alex@stanford.edu');
+  const [profileWeeklyTarget, setProfileWeeklyTarget] = useState('20');
+  const [profileStudyMode, setProfileStudyMode] = useState('active-recall');
 
   // Registration page state
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
@@ -170,7 +219,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem('ss_isLoggedIn', isLoggedIn);
     localStorage.setItem('ss_userEmail', userEmail);
-    if (isLoggedIn && view === 'landing') {
+    if (isLoggedIn && view !== 'dashboard') {
       setView('dashboard');
     }
   }, [isLoggedIn, userEmail]);
@@ -1519,7 +1568,7 @@ function App() {
       <div className="dashboard-container">
         {/* SIDEBAR NAVIGATION */}
         <aside className="dashboard-sidebar">
-          <div className="sidebar-brand" onClick={() => setView('landing')}>
+          <div className="sidebar-brand" onClick={() => setActiveTab('dashboard')}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
               <rect width="24" height="24" rx="6" fill="url(#dbLogoGrad)" />
               <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1545,13 +1594,13 @@ function App() {
 
           <nav className="sidebar-nav">
             <button 
-              className={`sidebar-nav-btn ${activeTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('overview')}
+              className={`sidebar-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
             >
               <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
               </svg>
-              <span>Overview</span>
+              <span>Dashboard</span>
             </button>
 
             <button 
@@ -1561,17 +1610,7 @@ function App() {
               <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>AI Study Planner</span>
-            </button>
-
-            <button 
-              className={`sidebar-nav-btn ${activeTab === 'focus' ? 'active' : ''}`}
-              onClick={() => setActiveTab('focus')}
-            >
-              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Focus Timer</span>
+              <span>Study Planner</span>
             </button>
 
             <button 
@@ -1581,20 +1620,83 @@ function App() {
               <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              <span>Task Manager</span>
+              <span>Tasks</span>
               {tasks.filter(t => !t.done).length > 0 && (
                 <span className="sidebar-badge">{tasks.filter(t => !t.done).length}</span>
               )}
             </button>
 
             <button 
-              className={`sidebar-nav-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-              onClick={() => setActiveTab('analytics')}
+              className={`sidebar-nav-btn ${activeTab === 'calendar' ? 'active' : ''}`}
+              onClick={() => setActiveTab('calendar')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Calendar</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'goals' ? 'active' : ''}`}
+              onClick={() => setActiveTab('goals')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Goals</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'notes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('notes')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Notes</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'ai-assistant' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ai-assistant')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <span>AI Assistant</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'progress' ? 'active' : ''}`}
+              onClick={() => setActiveTab('progress')}
             >
               <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span>Analytics</span>
+              <span>Progress</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'notifications' ? 'active' : ''}`}
+              onClick={() => setActiveTab('notifications')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span>Notifications</span>
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="sidebar-badge">{notifications.filter(n => !n.read).length}</span>
+              )}
+            </button>
+
+            <button 
+              className={`sidebar-nav-btn ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <svg className="nav-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span>Profile</span>
             </button>
           </nav>
 
@@ -1621,7 +1723,7 @@ function App() {
               <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              <span>Sign Out</span>
+              <span>Logout</span>
             </button>
           </div>
         </aside>
@@ -1647,630 +1749,30 @@ function App() {
 
           {/* ACTIVE TAB CONTENT */}
           <div className="dashboard-tab-content">
-            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'dashboard' && renderOverviewTab()}
             {activeTab === 'planner' && renderPlannerTab()}
-            {activeTab === 'focus' && renderFocusTab()}
             {activeTab === 'tasks' && renderTasksTab()}
-            {activeTab === 'analytics' && renderAnalyticsTab()}
+            {activeTab === 'calendar' && <CalendarTab events={events} setEvents={setEvents} addActivity={addActivity} />}
+            {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} addActivity={addActivity} />}
+            {activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} activeNoteId={activeNoteId} setActiveNoteId={setActiveNoteId} addActivity={addActivity} />}
+            {activeTab === 'ai-assistant' && <AiAssistantTab />}
+            {activeTab === 'progress' && renderAnalyticsTab()}
+            {activeTab === 'notifications' && <NotificationsTab notifications={notifications} setNotifications={setNotifications} />}
+            {activeTab === 'profile' && <ProfileTab userEmail={userEmail} setUserEmail={setUserEmail} addActivity={addActivity} />}
           </div>
         </main>
       </div>
     );
   }
 
-  // ================= RENDER REGISTER VIEW =================
-  if (view === 'register') {
-    const regEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail);
-    const pwdStrength   = getPasswordStrength(formPassword);
-    const confirmMatch  = formConfirmPassword.length > 0 && formPassword === formConfirmPassword;
-    const confirmMiss   = formConfirmPassword.length > 0 && formPassword !== formConfirmPassword;
+  // ================= RENDER PUBLIC VIEWS =================
 
-    return (
-      <div className="register-page">
-        {/* ── LEFT BRANDING PANEL ── */}
-        <aside className="register-left-panel">
-          <div className="reg-left-inner">
-            {/* Logo */}
-            <div className="reg-logo" onClick={() => setView('landing')}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="url(#rLogoGrad)" />
-                <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <defs>
-                  <linearGradient id="rLogoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#8B5CF6"/>
-                    <stop offset="1" stopColor="#EC4899"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span>SmartStudy</span>
-            </div>
-
-            {/* Headline */}
-            <div className="reg-left-headline">
-              <h1>Your academic edge <span className="reg-highlight">starts here.</span></h1>
-              <p>Join 50,000+ students who study smarter, not longer — with personalized AI schedules and science-backed focus tools.</p>
-            </div>
-
-            {/* Benefits */}
-            <ul className="reg-benefits-list">
-              <li>
-                <span className="reg-benefit-icon">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                </span>
-                <div>
-                  <strong>AI-powered study schedules</strong>
-                  <span>Built around your exams, free hours, and learning pace.</span>
-                </div>
-              </li>
-              <li>
-                <span className="reg-benefit-icon">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                </span>
-                <div>
-                  <strong>Active Recall &amp; Spaced Repetition</strong>
-                  <span>Neuroscience-backed techniques that double your retention.</span>
-                </div>
-              </li>
-              <li>
-                <span className="reg-benefit-icon">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </span>
-                <div>
-                  <strong>Pomodoro focus timers</strong>
-                  <span>Beat procrastination with timed sessions and analytics.</span>
-                </div>
-              </li>
-              <li>
-                <span className="reg-benefit-icon">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                </span>
-                <div>
-                  <strong>Grade analytics dashboard</strong>
-                  <span>Track readiness scores and spot weak areas early.</span>
-                </div>
-              </li>
-            </ul>
-
-            {/* Testimonial */}
-            <div className="reg-testimonial-card">
-              <div className="reg-quote-mark">&ldquo;</div>
-              <p>Went from C's to Dean's List in one semester. The schedule builder does all the heavy lifting.</p>
-              <div className="reg-testimonial-author">
-                <span className="reg-author-avatar">PS</span>
-                <div>
-                  <strong>Priya S.</strong>
-                  <span>Stanford University, Class of &apos;25</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Decorative orbs */}
-          <div className="reg-orb reg-orb-1"></div>
-          <div className="reg-orb reg-orb-2"></div>
-        </aside>
-
-        {/* ── RIGHT FORM PANEL ── */}
-        <main className="register-right-panel">
-          {/* Top bar */}
-          <div className="reg-top-bar">
-            <button className="theme-toggle-btn" onClick={handleToggleTheme} aria-label="Toggle Theme">
-              {theme === 'dark' ? (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-            <span className="reg-signin-prompt">
-              Already have an account?
-              <button className="btn-toggle-auth-tier" onClick={() => { setView('login'); setFormError(''); }}>
-                Sign In
-              </button>
-            </span>
-          </div>
-
-          {/* Form card */}
-          <div className="register-form-wrapper">
-            <div className="register-form-card">
-              <div className="register-form-header">
-                <h2>Create your account</h2>
-                <p>Free forever. No credit card required.</p>
-              </div>
-
-              {/* Social sign-up */}
-              <div className="social-login-grid reg-social-grid">
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('google')} disabled={registerLoading}>
-                  <svg width="18" height="18" viewBox="0 0 18 18">
-                    <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.7-1.56 2.69-3.86 2.69-6.6z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853"/>
-                    <path d="M3.96 10.69A5.4 5.4 0 0 1 3.68 9c0-.58.1-1.15.28-1.69V4.98H.96A8.99 8.99 0 0 0 0 9c0 1.48.36 2.88.96 4.14l3-2.45z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.02A8.99 8.99 0 0 0 9 0 9 9 0 0 0 .96 4.98l3 2.45c.71-2.13 2.7-3.71 5.04-3.71z" fill="#EA4335"/>
-                  </svg>
-                  <span>Google</span>
-                </button>
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('apple')} disabled={registerLoading}>
-                  <svg width="16" height="18" viewBox="0 0 16 18" fill="currentColor">
-                    <path d="M13.68 9.87c.03-2.35 1.94-3.48 2.03-3.53-1.1-1.61-2.82-1.83-3.42-1.87-1.45-.15-2.83.85-3.57.85-.73 0-1.9-.83-3.13-.81-1.62.02-3.12.94-3.96 2.39-1.69 2.93-.43 7.26 1.2 9.61.8 1.15 1.74 2.44 2.99 2.39 1.2-.05 1.66-.77 3.11-.77 1.44 0 1.86.77 3.12.74 1.28-.02 2.1-.1.17-1.17-1.07-1.57-1.85-3.48-1.85-5.91-.01-.03-.01-.07-.01-.1zm-2.45-6.84c.65-.79 1.09-1.88.97-2.97-.94.04-2.08.63-2.75 1.41-.58.67-1.09 1.78-.95 2.85.94.07 2.01-.5 2.73-1.29z" />
-                  </svg>
-                  <span>Apple</span>
-                </button>
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('github')} disabled={registerLoading}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-                    <path fillRule="evenodd" clipRule="evenodd" d="M9 0C4.03 0 0 4.03 0 9c0 3.98 2.58 7.35 6.16 8.54.45.08.61-.2.61-.43 0-.21-.01-.78-.01-1.53-2.5.54-3.03-1.21-3.03-1.21-.41-1.04-1-1.32-1-1.32-.82-.56.06-.55.06-.55.9.06 1.38.93 1.38.93.8 1.38 2.12.98 2.63.75.08-.58.31-.98.57-1.21-2-.23-4.1-1-4.1-4.46 0-.98.35-1.79.93-2.42-.09-.23-.4-1.14.09-2.39 0 0 .76-.24 2.47.92A8.6 8.6 0 019 4.88c.77.004 1.54.1 2.27.3 1.7-1.16 2.46-.92 2.46-.92.49 1.25.18 2.16.09 2.39.58.63.93 1.44.93 2.42 0 3.48-2.1 4.22-4.11 4.45.32.28.62.83.62 1.68 0 1.21-.01 2.19-.01 2.49 0 .24.16.52.62.43C15.42 16.35 18 12.98 18 9c0-4.97-4.03-9-9-9z" />
-                  </svg>
-                  <span>GitHub</span>
-                </button>
-              </div>
-
-              <div className="auth-separator"><span>or sign up with email</span></div>
-
-              {registerError   && <div className="auth-error-alert">{registerError}</div>}
-              {registerSuccess && <div className="auth-success-alert">{registerSuccess}</div>}
-
-              <form onSubmit={handleRegisterSubmit} className="register-form">
-                {/* Full Name */}
-                <div className="form-group">
-                  <label htmlFor="reg-fullname">Full Name</label>
-                  <input
-                    type="text"
-                    id="reg-fullname"
-                    placeholder="Alex Rivera"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    required
-                    className="login-input"
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="form-group">
-                  <label htmlFor="reg-email">Student Email</label>
-                  <div className="input-with-verification">
-                    <input
-                      type="email"
-                      id="reg-email"
-                      placeholder="alex@stanford.edu"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      required
-                      className="login-input"
-                    />
-                    {regEmailValid && (
-                      <span className="email-verify-checkmark">
-                        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-                          <path d="M1 5L4.5 8.5L11 1" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="form-group">
-                  <label htmlFor="reg-password">Password</label>
-                  <div className="password-input-wrapper">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      id="reg-password"
-                      placeholder="Min. 8 characters"
-                      value={formPassword}
-                      onChange={(e) => setFormPassword(e.target.value)}
-                      required
-                      className="login-input password-input"
-                    />
-                    <button type="button" className="show-password-btn" onClick={() => setShowPassword(!showPassword)} aria-label="Toggle password">
-                      {showPassword ? (
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Password strength meter */}
-                  {formPassword.length > 0 && (
-                    <div className="pwd-strength-container">
-                      <div className="pwd-strength-bar">
-                        {[1,2,3,4,5].map(seg => (
-                          <div
-                            key={seg}
-                            className="pwd-strength-segment"
-                            style={{ backgroundColor: pwdStrength.score >= seg ? pwdStrength.color : undefined }}
-                          />
-                        ))}
-                      </div>
-                      <span className="pwd-strength-label" style={{ color: pwdStrength.color }}>
-                        {pwdStrength.label}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div className="form-group">
-                  <label htmlFor="reg-confirm">Confirm Password</label>
-                  <div className="password-input-wrapper">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      id="reg-confirm"
-                      placeholder="Re-enter your password"
-                      value={formConfirmPassword}
-                      onChange={(e) => setFormConfirmPassword(e.target.value)}
-                      required
-                      className={`login-input password-input ${
-                        confirmMatch ? 'input-match' : confirmMiss ? 'input-mismatch' : ''
-                      }`}
-                    />
-                    <button type="button" className="show-password-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label="Toggle confirm password">
-                      {showConfirmPassword ? (
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                  {confirmMatch && <p className="field-hint match">✓ Passwords match</p>}
-                  {confirmMiss  && <p className="field-hint mismatch">✗ Passwords do not match</p>}
-                </div>
-
-                {/* Terms of Service */}
-                <div className="terms-row">
-                  <label className="remember-me-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={termsAccepted}
-                      onChange={() => setTermsAccepted(!termsAccepted)}
-                    />
-                    <span className="checkbox-custom-box">
-                      {termsAccepted && (
-                        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </span>
-                    <span className="checkbox-label-text">
-                      I agree to the{' '}
-                      <button type="button" className="btn-terms-link" onClick={() => alert('Terms of Service — coming soon!')}>Terms of Service</button>
-                      {' '}and{' '}
-                      <button type="button" className="btn-terms-link" onClick={() => alert('Privacy Policy — coming soon!')}>Privacy Policy</button>
-                    </span>
-                  </label>
-                </div>
-
-                {/* Submit */}
-                <button type="submit" className="btn-primary-gradient btn-login-submit btn-register-submit" disabled={registerLoading}>
-                  {registerLoading ? <span className="spinner"></span> : <span>Create Free Account ⚡</span>}
-                </button>
-              </form>
-
-              <p className="reg-signin-footer">
-                Already have an account?{' '}
-                <button className="btn-toggle-auth-tier" onClick={() => { setView('login'); setFormError(''); }}>
-                  Sign In
-                </button>
-              </p>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // ================= RENDER LOGIN VIEW =================
-  if (view === 'login') {
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail);
-    
-    return (
-      <div className="landing-root">
-        {/* Simple Login Header */}
-        <header className="navbar-container">
-          <div className="container navbar-inner">
-            <div className="navbar-logo" onClick={() => setView('landing')}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="24" height="24" rx="6" fill="url(#loginLogoGrad)" />
-                <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <defs>
-                  <linearGradient id="loginLogoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#8B5CF6"/>
-                    <stop offset="1" stopColor="#EC4899"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="logo-text">SmartStudy</span>
-            </div>
-
-            <div className="navbar-actions">
-              <button className="theme-toggle-btn" onClick={handleToggleTheme} aria-label="Toggle Theme">
-                {theme === 'dark' ? (
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                )}
-              </button>
-              <button onClick={() => setView('landing')} className="btn-secondary-outline btn-nav-back">
-                Back to Home
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* Login Card Centered Container */}
-        <section className="login-page-section">
-          <div className="hero-glow-1"></div>
-          <div className="hero-glow-2"></div>
-          
-          <div className="login-card-container">
-            <div className="login-card">
-              <div className="login-card-header">
-                <h2>{isSignUp ? 'Join SmartStudy' : 'Welcome Back'}</h2>
-                <p>{isSignUp ? 'Create your student account to get started.' : 'Sign in to access your dashboard & planner.'}</p>
-              </div>
-
-              {formError && <div className="auth-error-alert">{formError}</div>}
-              {formSuccess && <div className="auth-success-alert">{formSuccess}</div>}
-
-              {/* Form Input fields */}
-              <form onSubmit={handleAuthSubmit} className="login-form">
-                {isSignUp && (
-                  <div className="form-group">
-                    <label htmlFor="reg-name">Your Full Name</label>
-                    <input 
-                      type="text" 
-                      id="reg-name" 
-                      placeholder="Alex Rivera"
-                      value={formName} 
-                      onChange={(e) => setFormName(e.target.value)}
-                      required
-                      className="login-input"
-                    />
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label htmlFor="login-email">Student Email Address</label>
-                  <div className="input-with-verification">
-                    <input 
-                      type="email" 
-                      id="login-email" 
-                      placeholder="alex@stanford.edu"
-                      value={formEmail} 
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      required
-                      className="login-input"
-                    />
-                    {isEmailValid && (
-                      <span className="email-verify-checkmark">
-                        <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 5L4.5 8.5L11 1" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <div className="password-label-row">
-                    <label htmlFor="login-pass">Password</label>
-                    {!isSignUp && (
-                      <button 
-                        type="button" 
-                        className="btn-forgot-password-link"
-                        onClick={() => alert("Password reset link sent to: " + (formEmail || "your email"))}
-                      >
-                        Forgot Password?
-                      </button>
-                    )}
-                  </div>
-                  <div className="password-input-wrapper">
-                    <input 
-                      type={showPassword ? 'text' : 'password'} 
-                      id="login-pass" 
-                      placeholder="••••••••"
-                      value={formPassword} 
-                      onChange={(e) => setFormPassword(e.target.value)}
-                      required
-                      className="login-input password-input"
-                    />
-                    <button 
-                      type="button" 
-                      className="show-password-btn" 
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide Password' : 'Show Password'}
-                    >
-                      {showPassword ? (
-                        /* Eye Closed Icon */
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        /* Eye Open Icon */
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember me option */}
-                <div className="login-options-row">
-                  <label className="remember-me-checkbox">
-                    <input 
-                      type="checkbox" 
-                      checked={rememberMe} 
-                      onChange={() => setRememberMe(!rememberMe)}
-                    />
-                    <span className="checkbox-custom-box">
-                      {rememberMe && (
-                        <svg width="8" height="6" viewBox="0 0 8 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </span>
-                    <span className="checkbox-label-text">Remember this browser</span>
-                  </label>
-                </div>
-
-                <button type="submit" className="btn-primary-gradient btn-login-submit" disabled={authLoading}>
-                  {authLoading ? (
-                    <span className="spinner"></span>
-                  ) : (
-                    <span>{isSignUp ? 'Create Account ⚡' : 'Sign In Now ⚡'}</span>
-                  )}
-                </button>
-              </form>
-
-              {/* Separator line */}
-              <div className="auth-separator">
-                <span>or continue with</span>
-              </div>
-
-              {/* Social Login Grid */}
-              <div className="social-login-grid">
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('google')} disabled={authLoading}>
-                  <svg width="18" height="18" viewBox="0 0 18 18">
-                    <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.7-1.56 2.69-3.86 2.69-6.6z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853"/>
-                    <path d="M3.96 10.69A5.4 5.4 0 0 1 3.68 9c0-.58.1-1.15.28-1.69V4.98H.96A8.99 8.99 0 0 0 0 9c0 1.48.36 2.88.96 4.14l3-2.45z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.02A8.99 8.99 0 0 0 9 0 9 9 0 0 0 .96 4.98l3 2.45c.71-2.13 2.7-3.71 5.04-3.71z" fill="#EA4335"/>
-                  </svg>
-                  <span>Google</span>
-                </button>
-
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('apple')} disabled={authLoading}>
-                  <svg width="16" height="18" viewBox="0 0 16 18" fill="currentColor">
-                    <path d="M13.68 9.87c.03-2.35 1.94-3.48 2.03-3.53-1.1-1.61-2.82-1.83-3.42-1.87-1.45-.15-2.83.85-3.57.85-.73 0-1.9-.83-3.13-.81-1.62.02-3.12.94-3.96 2.39-1.69 2.93-.43 7.26 1.2 9.61.8 1.15 1.74 2.44 2.99 2.39 1.2-.05 1.66-.77 3.11-.77 1.44 0 1.86.77 3.12.74 1.28-.02 2.1-.1.17-1.17-1.07-1.57-1.85-3.48-1.85-5.91-.01-.03-.01-.07-.01-.1zm-2.45-6.84c.65-.79 1.09-1.88.97-2.97-.94.04-2.08.63-2.75 1.41-.58.67-1.09 1.78-.95 2.85.94.07 2.01-.5 2.73-1.29z" />
-                  </svg>
-                  <span>Apple</span>
-                </button>
-
-                <button className="btn-social-auth" onClick={() => handleSocialLogin('github')} disabled={authLoading}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-                    <path fillRule="evenodd" clipRule="evenodd" d="M9 0C4.03 0 0 4.03 0 9c0 3.98 2.58 7.35 6.16 8.54.45.08.61-.2.61-.43 0-.21-.01-.78-.01-1.53-2.5.54-3.03-1.21-3.03-1.21-.41-1.04-1-1.32-1-1.32-.82-.56.06-.55.06-.55.9.06 1.38.93 1.38.93.8 1.38 2.12.98 2.63.75.08-.58.31-.98.57-1.21-2-.23-4.1-1-4.1-4.46 0-.98.35-1.79.93-2.42-.09-.23-.4-1.14.09-2.39 0 0 .76-.24 2.47.92A8.6 8.6 0 019 4.88c.77.004 1.54.1 2.27.3 1.7-1.16 2.46-.92 2.46-.92.49 1.25.18 2.16.09 2.39.58.63.93 1.44.93 2.42 0 3.48-2.1 4.22-4.11 4.45.32.28.62.83.62 1.68 0 1.21-.01 2.19-.01 2.49 0 .24.16.52.62.43C15.42 16.35 18 12.98 18 9c0-4.97-4.03-9-9-9z" />
-                  </svg>
-                  <span>GitHub</span>
-                </button>
-              </div>
-
-              {/* Form Bottom Switcher */}
-              <div className="login-card-footer">
-                <p>
-                  Don&apos;t have an account yet?
-                  <button
-                    type="button"
-                    className="btn-toggle-auth-tier"
-                    onClick={() => {
-                      setView('register');
-                      setFormError('');
-                      setFormSuccess('');
-                      setRegisterError('');
-                    }}
-                  >
-                    Create Student Account
-                  </button>
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  // ================= RENDER LANDING VIEW =================
-  return (
-    <div className="landing-root">
-      
-      {/* NAVBAR */}
-      <header className="navbar-container">
-        <div className="container navbar-inner">
-          <div className="navbar-logo" onClick={() => setView('landing')}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="24" height="24" rx="6" fill="url(#logoGrad)" />
-              <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <defs>
-                <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#8B5CF6"/>
-                  <stop offset="1" stopColor="#EC4899"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            <span className="logo-text">SmartStudy</span>
-          </div>
-
-          <nav className="navbar-links">
-            <a href="#features">Features</a>
-            <a href="#demo">Interactive Planner</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
-          </nav>
-
-          <div className="navbar-actions">
-            <button className="theme-toggle-btn" onClick={handleToggleTheme} aria-label="Toggle Theme">
-              {theme === 'dark' ? (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-
-            {isLoggedIn ? (
-              <div className="logged-in-user-menu">
-                <span className="user-nav-badge" title={userEmail}>
-                  {userEmail.substring(0, 2).toUpperCase()}
-                </span>
-                <button className="btn-secondary-outline btn-logout" onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <>
-                <button 
-                  className="btn-signin-link"
-                  onClick={() => { setView('login'); setIsSignUp(false); }}
-                >
-                  Sign In
-                </button>
-                <button 
-                  className="btn-navbar-cta"
-                  onClick={() => { setView('login'); setIsSignUp(true); }}
-                >
-                  Get Started
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
+  const renderLandingPage = () => (
+    <>
       {/* HERO SECTION */}
       <section className="hero-section">
         <div className="hero-glow-1"></div>
         <div className="hero-glow-2"></div>
-        
         <div className="container hero-inner">
           <div className="hero-content">
             <div className="hero-badge">
@@ -2286,15 +1788,11 @@ function App() {
               Stop cramming blindly. Get personalized, neuroscience-backed study plans, interactive Pomodoro tools, and predictive grade analytics built for today's high-achieving students.
             </p>
             <div className="hero-ctas">
-              <button 
-                className="btn-primary-gradient"
-                onClick={() => { setView('login'); setIsSignUp(true); }}
-              >
+              <button className="btn-primary-gradient" onClick={() => { setView('register'); setIsSignUp(true); }}>
                 Start Planning Free
               </button>
-              <a href="#features" className="btn-secondary-outline">See How It Works</a>
+              <span className="btn-secondary-outline" style={{cursor:'pointer'}} onClick={() => setView('features')}>See How It Works</span>
             </div>
-            
             <div className="hero-social-proof">
               <div className="avatars-group">
                 <span className="avatar-mini bg-red"></span>
@@ -2302,11 +1800,10 @@ function App() {
                 <span className="avatar-mini bg-purple"></span>
                 <span className="avatar-mini bg-green"></span>
               </div>
-              <p>Loved by <strong>50,000+</strong> students at Stanford, MIT, Oxford & Harvard</p>
+              <p>Loved by <strong>50,000+</strong> students at Stanford, MIT, Oxford &amp; Harvard</p>
             </div>
           </div>
 
-          {/* Hero Visual Mock Dashboard */}
           <div className="hero-visual">
             <div className="mock-dashboard">
               <div className="dashboard-header">
@@ -2315,12 +1812,10 @@ function App() {
                   <span className="dot yellow"></span>
                   <span className="dot green"></span>
                 </div>
-                <div className="dashboard-title">Today's Focus Dashboard</div>
+                <div className="dashboard-title">Today&apos;s Focus Dashboard</div>
                 <div className="dashboard-status">Online</div>
               </div>
-
               <div className="dashboard-grid">
-                {/* Left: Pomodoro Timer */}
                 <div className="widget timer-widget">
                   <h3>Focus Sessions</h3>
                   <div className="timer-circle-container">
@@ -2331,24 +1826,16 @@ function App() {
                     <button className={`btn-timer-action ${pomodoroRunning ? 'running' : ''}`} onClick={() => setPomodoroRunning(!pomodoroRunning)}>
                       {pomodoroRunning ? 'Pause' : 'Start Focus'}
                     </button>
-                    <button className="btn-timer-reset" onClick={() => { setPomodoroSeconds(1500); setPomodoroRunning(false); }}>
-                      Reset
-                    </button>
+                    <button className="btn-timer-reset" onClick={() => { setPomodoroSeconds(1500); setPomodoroRunning(false); }}>Reset</button>
                   </div>
                 </div>
-
-                {/* Right: Daily Checklist */}
                 <div className="widget checklist-widget">
                   <h3>Daily Checklist</h3>
                   <div className="task-list">
                     {tasks.map((task) => (
                       <div key={task.id} className={`task-item ${task.done ? 'checked' : ''}`} onClick={() => toggleTask(task.id)}>
                         <div className="custom-checkbox">
-                          {task.done && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
+                          {task.done && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </div>
                         <span className="task-text">{task.text}</span>
                       </div>
@@ -2360,30 +1847,16 @@ function App() {
                       <span>{Math.round((tasks.filter(t => t.done).length / tasks.length) * 100)}%</span>
                     </div>
                     <div className="progress-track">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${(tasks.filter(t => t.done).length / tasks.length) * 100}%` }}
-                      ></div>
+                      <div className="progress-fill" style={{ width: `${(tasks.filter(t => t.done).length / tasks.length) * 100}%` }}></div>
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Bottom: Focus Analytics Graphic */}
               <div className="widget analytics-widget">
                 <div className="analytics-meta">
-                  <div>
-                    <h4>Syllabus Covered</h4>
-                    <span className="analytics-num">78%</span>
-                  </div>
-                  <div>
-                    <h4>Focus Score</h4>
-                    <span className="analytics-num glow-txt">94/100</span>
-                  </div>
-                  <div>
-                    <h4>Active Recall Streak</h4>
-                    <span className="analytics-num">12 Days</span>
-                  </div>
+                  <div><h4>Syllabus Covered</h4><span className="analytics-num">78%</span></div>
+                  <div><h4>Focus Score</h4><span className="analytics-num glow-txt">94/100</span></div>
+                  <div><h4>Active Recall Streak</h4><span className="analytics-num">12 Days</span></div>
                 </div>
                 <div className="mock-graph">
                   <div className="graph-bar" style={{ height: '40%' }}><span>Mon</span></div>
@@ -2404,118 +1877,68 @@ function App() {
       <section className="stats-section">
         <div className="container">
           <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-number">45%</div>
-              <div className="stat-title">Study Efficiency Boost</div>
-              <p className="stat-desc">Students report completing syllabus blocks in nearly half the average time.</p>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">12 hrs</div>
-              <div className="stat-title">Time Saved Weekly</div>
-              <p className="stat-desc">AI scheduling automatically blocks empty slots, eliminating manual calendar setup.</p>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">92%</div>
-              <div className="stat-title">Goal Completion Rate</div>
-              <p className="stat-desc">Gamified task streaks keep students accountable and motivated throughout the term.</p>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">4.9/5</div>
-              <div className="stat-title">Student Satisfaction</div>
-              <p className="stat-desc">Highly rated across Trustpilot and App Store for visual design and accessibility.</p>
-            </div>
+            <div className="stat-card"><div className="stat-number">45%</div><div className="stat-title">Study Efficiency Boost</div><p className="stat-desc">Students complete syllabus blocks in nearly half the average time.</p></div>
+            <div className="stat-card"><div className="stat-number">12 hrs</div><div className="stat-title">Time Saved Weekly</div><p className="stat-desc">AI scheduling eliminates manual calendar setup automatically.</p></div>
+            <div className="stat-card"><div className="stat-number">92%</div><div className="stat-title">Goal Completion Rate</div><p className="stat-desc">Gamified task streaks keep students accountable all semester.</p></div>
+            <div className="stat-card"><div className="stat-number">4.9/5</div><div className="stat-title">Student Satisfaction</div><p className="stat-desc">Highly rated across Trustpilot and App Store for design &amp; accessibility.</p></div>
           </div>
         </div>
       </section>
 
-      {/* INTERACTIVE DEMO PLANNER SECTION */}
+      {/* INTERACTIVE DEMO PLANNER */}
       <section id="demo" className="demo-section">
         <div className="container">
           <div className="section-header">
             <div className="section-badge">Try It Live</div>
             <h2>Generate Your Smart Study Session</h2>
-            <p>Select your goals, availability, and learning method. Our system will immediately calculate a structured timeline to organize your study block.</p>
+            <p>Select your goals, availability, and learning method. Our system instantly calculates a structured timeline.</p>
           </div>
-
           <div className="demo-widget-layout">
-            {/* Form Side */}
             <div className="demo-form-card">
               <h3>Configure Your Block</h3>
               <form onSubmit={handleGeneratePlan}>
                 <div className="form-group">
                   <label htmlFor="subject-select">Subject Category</label>
-                  <select 
-                    id="subject-select" 
-                    value={subject} 
-                    onChange={(e) => setSubject(e.target.value)}
-                  >
-                    <option value="Computer Science">Computer Science & Algorithms</option>
-                    <option value="Organic Chemistry">Organic Chemistry & Bio</option>
-                    <option value="World History">World History & Humanities</option>
-                    <option value="Calculus & Algebra">Calculus & Algebra</option>
-                    <option value="Literature & Essay">Literature & Critical Essay</option>
+                  <select id="subject-select" value={subject} onChange={(e) => setSubject(e.target.value)}>
+                    <option value="Computer Science">Computer Science &amp; Algorithms</option>
+                    <option value="Organic Chemistry">Organic Chemistry &amp; Bio</option>
+                    <option value="World History">World History &amp; Humanities</option>
+                    <option value="Calculus & Algebra">Calculus &amp; Algebra</option>
+                    <option value="Literature & Essay">Literature &amp; Critical Essay</option>
                   </select>
                 </div>
-
                 <div className="form-group">
                   <label>Session Duration</label>
                   <div className="radio-button-group">
-                    {[
-                      { label: "1 Hour", val: "60" },
-                      { label: "2 Hours", val: "120" },
-                      { label: "3 Hours", val: "180" },
-                      { label: "4 Hours", val: "244" }
-                    ].map((d) => (
-                      <button
-                        key={d.val}
-                        type="button"
-                        className={`btn-radio ${duration === d.val ? 'active' : ''}`}
-                        onClick={() => setDuration(d.val)}
-                      >
-                        {d.label}
-                      </button>
+                    {[{ label: "1 Hour", val: "60" },{ label: "2 Hours", val: "120" },{ label: "3 Hours", val: "180" },{ label: "4 Hours", val: "244" }].map((d) => (
+                      <button key={d.val} type="button" className={`btn-radio ${duration === d.val ? 'active' : ''}`} onClick={() => setDuration(d.val)}>{d.label}</button>
                     ))}
                   </div>
                 </div>
-
                 <div className="form-group">
-                  <label htmlFor="study-mode">Study Mode / Focus Technique</label>
-                  <select 
-                    id="study-mode" 
-                    value={mode} 
-                    onChange={(e) => setMode(e.target.value)}
-                  >
-                    <option value="active-recall">🧠 Active Recall (Self-Testing Focus)</option>
-                    <option value="deep-focus">🎯 Deep Focus (Long Content Exploration)</option>
-                    <option value="cram-mode">⚡ Cram Mode (Rapid Topics Intake)</option>
-                    <option value="spaced-repetition">🔄 Spaced Repetition (Prior Review)</option>
+                  <label htmlFor="study-mode">Study Mode</label>
+                  <select id="study-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
+                    <option value="active-recall">🧠 Active Recall</option>
+                    <option value="deep-focus">🎯 Deep Focus</option>
+                    <option value="cram-mode">⚡ Cram Mode</option>
+                    <option value="spaced-repetition">🔄 Spaced Repetition</option>
                   </select>
                 </div>
-
                 <button type="submit" className="btn-generate-planner" disabled={plannerLoading}>
-                  {plannerLoading ? (
-                    <span className="spinner"></span>
-                  ) : (
-                    <span>Calculate Custom Schedule ⚡</span>
-                  )}
+                  {plannerLoading ? <span className="spinner"></span> : <span>Calculate Custom Schedule ⚡</span>}
                 </button>
               </form>
             </div>
-
-            {/* Results Side */}
             <div className="demo-results-card" id="planner-output">
               {!generatedPlan && !plannerLoading && (
                 <div className="planner-empty-state">
                   <div className="icon-sphere">
-                    <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                    </svg>
+                    <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
                   </div>
                   <h3>Your Plan Will Appear Here</h3>
-                  <p>Choose your parameters on the left and click calculate. Our planner will instantly map out a structured revision session customized for you.</p>
+                  <p>Choose your parameters and click calculate. Our planner will instantly map out a customized revision session.</p>
                 </div>
               )}
-
               {plannerLoading && (
                 <div className="planner-loading-state">
                   <div className="pulsing-brain">🧠</div>
@@ -2523,39 +1946,25 @@ function App() {
                   <p>Applying neuroscience-backed time splits and active rest cycles.</p>
                 </div>
               )}
-
               {generatedPlan && !plannerLoading && (
                 <div className="planner-plan-content">
                   <div className="plan-header">
-                    <div>
-                      <span className="plan-badge">{generatedPlan.modeName}</span>
-                      <h4>{generatedPlan.subject} Session</h4>
-                    </div>
+                    <div><span className="plan-badge">{generatedPlan.modeName}</span><h4>{generatedPlan.subject} Session</h4></div>
                     <span className="plan-duration-total">⏰ {generatedPlan.duration} Mins</span>
                   </div>
-
                   <div className="timeline-container">
                     {generatedPlan.steps.map((step, idx) => (
                       <div key={idx} className="timeline-item">
-                        <div className={`timeline-indicator ${step.type}`}>
-                          <span>{idx + 1}</span>
-                        </div>
+                        <div className={`timeline-indicator ${step.type}`}><span>{idx + 1}</span></div>
                         <div className="timeline-content-card">
-                          <div className="timeline-meta">
-                            <span className="timeline-phase">{step.phase}</span>
-                            <span className="timeline-duration">{step.time}</span>
-                          </div>
-                          <h5>{step.title}</h5>
-                          <p>{step.desc}</p>
+                          <div className="timeline-meta"><span className="timeline-phase">{step.phase}</span><span className="timeline-duration">{step.time}</span></div>
+                          <h5>{step.title}</h5><p>{step.desc}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-
                   <div className="plan-actions">
-                    <button className="btn-export-plan" onClick={handleExport}>
-                      Export Schedule to Device
-                    </button>
+                    <button className="btn-export-plan" onClick={handleExport}>Export Schedule to Device</button>
                     {successMsg && <div className="success-toast">{successMsg}</div>}
                   </div>
                 </div>
@@ -2565,308 +1974,323 @@ function App() {
         </div>
       </section>
 
-      {/* FEATURES SECTION */}
-      <section id="features" className="features-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-badge">Full Suite</div>
-            <h2>Smart Features Built for High Grades</h2>
-            <p>Everything you need to study smarter, retain complex material, and track progress without burnouts.</p>
-          </div>
+      {renderFeaturesSection()}
+      {renderTestimonialsSection()}
+      {renderFaqSection()}
+    </>
+  );
 
-          <div className="features-grid">
-            {/* Feature 1 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-1">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3>AI Schedule Builder</h3>
-              <p>Intelligently balances your courses and dynamically changes study blocks based on exam difficulties and deadline urgency.</p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-2">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3>Advanced Pomodoro Suite</h3>
-              <p>Custom focus intervals integrated directly into your tasks. Blocks notifications and plays ambient binaural beats to maintain focus.</p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-3">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3>Visual Analytics</h3>
-              <p>Track study duration, screen time, checklist accomplishments, and view estimated readiness scores before entering your exams.</p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-4">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3>Collaborative Study Rooms</h3>
-              <p>Share calendars with classmates, hold virtual accountability group calls, and benchmark your progress on subject leaderboards.</p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-1">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <h3>Active Recall Booster</h3>
-              <p>Generates mock flashcards directly from lecture PDFs and automatically prompts questions during rest intervals to force active retrieval.</p>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="feature-card">
-              <div className="feature-icon-box grad-2">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3>Privacy-First Vault</h3>
-              <p>All data is encrypted. We never sell your study habits or uploaded textbooks. Enjoy complete privacy over your academic work.</p>
-            </div>
-          </div>
+  const renderFeaturesSection = () => (
+    <section className="features-section">
+      <div className="container">
+        <div className="section-header">
+          <div className="section-badge">Full Suite</div>
+          <h2>Smart Features Built for High Grades</h2>
+          <p>Everything you need to study smarter, retain complex material, and track progress without burnout.</p>
         </div>
-      </section>
+        <div className="features-grid">
+          {[
+            { grad: 'grad-1', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />, title: 'AI Schedule Builder', desc: 'Intelligently balances your courses and dynamically adjusts study blocks based on exam difficulty and deadline urgency.' },
+            { grad: 'grad-2', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />, title: 'Advanced Pomodoro Suite', desc: 'Custom focus intervals integrated directly into your tasks. Blocks notifications and plays ambient beats to maintain focus.' },
+            { grad: 'grad-3', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />, title: 'Visual Analytics', desc: 'Track study duration, checklist accomplishments, and view estimated readiness scores before your exams.' },
+            { grad: 'grad-4', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />, title: 'Collaborative Study Rooms', desc: 'Share calendars with classmates, hold virtual accountability calls, and benchmark your progress on leaderboards.' },
+            { grad: 'grad-1', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />, title: 'Active Recall Booster', desc: 'Generates mock flashcards from lecture PDFs and automatically prompts questions during rest intervals.' },
+            { grad: 'grad-2', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />, title: 'Privacy-First Vault', desc: 'All data is encrypted. We never sell your study habits or uploaded textbooks. Complete privacy over your academic work.' },
+          ].map((f, i) => (
+            <div key={i} className="feature-card">
+              <div className={`feature-icon-box ${f.grad}`}>
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">{f.icon}</svg>
+              </div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
-      {/* TESTIMONIALS SECTION */}
-      <section className="testimonials-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-badge">Social Proof</div>
-            <h2>What Students Are Saying</h2>
-            <p>Read true feedback from university and high school students who elevated their grades and recovered their mental health.</p>
-          </div>
+  const renderTestimonialsSection = () => (
+    <section className="testimonials-section">
+      <div className="container">
+        <div className="section-header">
+          <div className="section-badge">Social Proof</div>
+          <h2>What Students Are Saying</h2>
+          <p>Real feedback from university and high school students who elevated their grades and recovered their mental health.</p>
+        </div>
+        <div className="testimonials-grid">
+          {TESTIMONIALS.map((t, idx) => (
+            <div key={idx} className="testimonial-card">
+              <div className="stars">{[...Array(t.rating)].map((_, i) => <span key={i} className="star-icon">★</span>)}</div>
+              <p className="quote">&ldquo;{t.quote}&rdquo;</p>
+              <div className="user-profile">
+                <div className="user-avatar">{t.avatar}</div>
+                <div className="user-meta"><h4>{t.name}</h4><span>{t.role}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
-          <div className="testimonials-grid">
-            {TESTIMONIALS.map((t, idx) => (
-              <div key={idx} className="testimonial-card">
-                <div className="stars">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <span key={i} className="star-icon">★</span>
-                  ))}
-                </div>
-                <p className="quote">"{t.quote}"</p>
-                <div className="user-profile">
-                  <div className="user-avatar">{t.avatar}</div>
-                  <div className="user-meta">
-                    <h4>{t.name}</h4>
-                    <span>{t.role}</span>
-                  </div>
+  const renderFaqSection = () => (
+    <section className="faq-section">
+      <div className="container">
+        <div className="section-header">
+          <div className="section-badge">Clarifications</div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Need more details? Here are answers to common student inquiries.</p>
+        </div>
+        <div className="faq-accordion-list">
+          {FAQS.map((faq, idx) => {
+            const isOpen = activeFaq === idx;
+            return (
+              <div key={idx} className={`faq-item ${isOpen ? 'open' : ''}`}>
+                <button className="faq-question-btn" onClick={() => setActiveFaq(isOpen ? null : idx)} aria-expanded={isOpen}>
+                  <span>{faq.q}</span>
+                  <span className="faq-icon-indicator">{isOpen ? '−' : '+'}</span>
+                </button>
+                <div className="faq-answer-wrapper">
+                  <p className="faq-answer">{faq.a}</p>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </section>
+      </div>
+    </section>
+  );
 
-      {/* PRICING SECTION */}
-      <section id="pricing" className="pricing-section">
+  const renderFeaturesPage = () => (
+    <div className="features-page-layout">
+      {renderFeaturesSection()}
+      {renderFaqSection()}
+    </div>
+  );
+
+  const renderAboutPage = () => (
+    <div className="about-page-layout">
+      <section className="about-page-section">
         <div className="container">
-          <div className="section-header">
-            <div className="section-badge">Fair Plans</div>
-            <h2>Simple, Affordable Pricing</h2>
-            <p>Start with our free plan. Upgrade to unlock unlimited AI uploads, priority mock schedules, and team rooms.</p>
-            
-            <div className="pricing-toggle-container">
-              <span className={billingPeriod === 'monthly' ? 'active' : ''}>Monthly</span>
-              <button 
-                className={`billing-toggle ${billingPeriod === 'annual' ? 'checked' : ''}`}
-                onClick={() => setBillingPeriod(prev => prev === 'monthly' ? 'annual' : 'monthly')}
-                aria-label="Toggle Billing Period"
-              >
-                <span className="toggle-slider"></span>
-              </button>
-              <span className={billingPeriod === 'annual' ? 'active' : ''}>
-                Annually <span className="discount-badge">Save 25%</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="pricing-grid">
-            {/* Card 1: Free */}
-            <div className="pricing-card">
-              <div className="pricing-tier">Base</div>
-              <h3 className="tier-name">Free Plan</h3>
-              <div className="price-container">
-                <span className="currency">$</span>
-                <span className="price">0</span>
-                <span className="period">/mo</span>
-              </div>
-              <p className="tier-desc">Essential planning features for individual learners.</p>
-              
-              <ul className="tier-features">
+          <div className="about-grid">
+            <div className="about-content">
+              <h2>Our Mission &amp; Academic Research</h2>
+              <p>SmartStudy was founded by cognitive researchers and developers to help students manage heavy workloads without burnout. We bridge the gap between memory science research and daily student workflows.</p>
+              <ul className="about-science-list">
                 <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Up to 3 active schedules
+                  <span className="science-icon">🧠</span>
+                  <div><h4>Active Recall Focus</h4><span>Studies show self-testing boosts long-term memory retrieval by up to 150% compared to passive reading.</span></div>
                 </li>
                 <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Standard Pomodoro timer
+                  <span className="science-icon">🔄</span>
+                  <div><h4>Spaced Repetition Integration</h4><span>Automatically schedules reviews right when memory begins to decay, flattening the forgetting curve.</span></div>
                 </li>
                 <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Basic progress trackers
-                </li>
-                <li className="disabled">
-                  <svg className="bullet-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                  Unlimited AI schedule updates
-                </li>
-                <li className="disabled">
-                  <svg className="bullet-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                  Auto PDF-to-flashcard generation
+                  <span className="science-icon">🎯</span>
+                  <div><h4>Cognitive Load Optimization</h4><span>Splits large syllabus objectives into smaller timed focus sessions to maintain attention span.</span></div>
                 </li>
               </ul>
-              
-              <button 
-                onClick={() => { setView('login'); setIsSignUp(true); }}
-                className="btn-pricing-cta"
-              >
-                Get Started Free
-              </button>
             </div>
-
-            {/* Card 2: Pro (Premium Highlighted Card) */}
-            <div className="pricing-card premium">
-              <div className="premium-badge">Most Popular</div>
-              <div className="pricing-tier">Pro</div>
-              <h3 className="tier-name">Smart Scholar</h3>
-              <div className="price-container">
-                <span className="currency">$</span>
-                <span className="price">{billingPeriod === 'monthly' ? '8' : '6'}</span>
-                <span className="period">/mo</span>
-              </div>
-              <p className="tier-desc">Advanced AI planning tools to maximize grades.</p>
-              
-              <ul className="tier-features">
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  <strong>Unlimited</strong> active schedules
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Dynamic AI schedule builder
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  PDF to Flashcards generation
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Spaced Repetition reminders
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Full focus room collaborations
-                </li>
-              </ul>
-              
-              <button 
-                className="btn-pricing-cta btn-pro" 
-                onClick={() => { setView('login'); setIsSignUp(true); }}
-              >
-                Go Pro Now
-              </button>
-            </div>
-
-            {/* Card 3: Team */}
-            <div className="pricing-card">
-              <div className="pricing-tier">Cohort</div>
-              <h3 className="tier-name">Study Group</h3>
-              <div className="price-container">
-                <span className="currency">$</span>
-                <span className="price">{billingPeriod === 'monthly' ? '24' : '18'}</span>
-                <span className="period">/mo</span>
-              </div>
-              <p className="tier-desc">Perfect for study groups, cohorts, and project teams.</p>
-              
-              <ul className="tier-features">
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Up to 5 student members
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Shared calendar integration
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Group focus goals & streaks
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Priority customer support
-                </li>
-                <li>
-                  <svg className="bullet-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 13l4 4L19 7"/></svg>
-                  Detailed group grade analytics
-                </li>
-              </ul>
-              
-              <button 
-                className="btn-pricing-cta"
-                onClick={() => { setView('login'); setIsSignUp(true); }}
-              >
-                Buy Cohort Plan
-              </button>
+            <div className="about-visual-box">
+              <div className="orb-glow"></div>
+              <div style={{fontSize: '80px', marginBottom: '20px'}}>🏛️</div>
+              <h3>Backed by Science</h3>
+              <p style={{color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5', marginTop: '10px'}}>Built upon research from Ebbinghaus&apos; forgetting curves and modern attention deficit solutions.</p>
             </div>
           </div>
         </div>
       </section>
+      {renderTestimonialsSection()}
+    </div>
+  );
 
-      {/* FAQ SECTION */}
-      <section id="faq" className="faq-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-badge">Clarifications</div>
-            <h2>Frequently Asked Questions</h2>
-            <p>Need more details? Here are some answers to common inquiries from students.</p>
-          </div>
-
-          <div className="faq-accordion-list">
-            {FAQS.map((faq, idx) => {
-              const isOpen = activeFaq === idx;
-              return (
-                <div 
-                  key={idx} 
-                  className={`faq-item ${isOpen ? 'open' : ''}`}
-                >
-                  <button 
-                    className="faq-question-btn"
-                    onClick={() => setActiveFaq(isOpen ? null : idx)}
-                    aria-expanded={isOpen}
-                  >
-                    <span>{faq.q}</span>
-                    <span className="faq-icon-indicator">
-                      {isOpen ? '−' : '+'}
-                    </span>
+  const renderLoginPage = () => {
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail);
+    return (
+      <section className="login-page-section">
+        <div className="login-card-container">
+          <div className="login-card">
+            <div className="login-card-header">
+              <h2>Welcome Back</h2>
+              <p>Sign in to access your dashboard &amp; planner.</p>
+            </div>
+            {formError && <div className="auth-error-alert">{formError}</div>}
+            {formSuccess && <div className="auth-success-alert">{formSuccess}</div>}
+            <form onSubmit={handleAuthSubmit} className="login-form">
+              <div className="form-group">
+                <label htmlFor="login-email">Student Email Address</label>
+                <div className="input-with-verification">
+                  <input type="email" id="login-email" placeholder="alex@stanford.edu" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} required className="login-input" />
+                  {isEmailValid && <span className="email-verify-checkmark"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>}
+                </div>
+              </div>
+              <div className="form-group">
+                <div className="password-label-row">
+                  <label htmlFor="login-pass">Password</label>
+                  <button type="button" className="btn-forgot-password-link" onClick={() => alert('Password reset link sent to: ' + (formEmail || 'your email'))}>Forgot Password?</button>
+                </div>
+                <div className="password-input-wrapper">
+                  <input type={showPassword ? 'text' : 'password'} id="login-pass" placeholder="••••••••" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} required className="login-input password-input" />
+                  <button type="button" className="show-password-btn" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
                   </button>
-                  <div className="faq-answer-wrapper">
-                    <p className="faq-answer">{faq.a}</p>
-                  </div>
                 </div>
-              );
-            })}
+              </div>
+              <div className="login-options-row">
+                <label className="remember-me-checkbox">
+                  <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
+                  <span className="checkbox-custom-box">{rememberMe && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3L3 5L7 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</span>
+                  <span className="checkbox-label-text">Remember this browser</span>
+                </label>
+              </div>
+              <button type="submit" className="btn-primary-gradient btn-login-submit" disabled={authLoading}>
+                {authLoading ? <span className="spinner"></span> : <span>Sign In Now ⚡</span>}
+              </button>
+            </form>
+            <div className="auth-separator"><span>or continue with</span></div>
+            <div className="social-login-grid">
+              <button className="btn-social-auth" onClick={() => handleSocialLogin('google')} disabled={authLoading}><span>Google</span></button>
+              <button className="btn-social-auth" onClick={() => handleSocialLogin('apple')} disabled={authLoading}><span>Apple</span></button>
+              <button className="btn-social-auth" onClick={() => handleSocialLogin('github')} disabled={authLoading}><span>GitHub</span></button>
+            </div>
+            <div className="login-card-footer">
+              <p>Don&apos;t have an account? <button type="button" className="btn-toggle-auth-tier" onClick={() => { setView('register'); setFormError(''); setFormSuccess(''); }}>Create Account</button></p>
+            </div>
           </div>
         </div>
       </section>
+    );
+  };
 
-      {/* FINAL CALL TO ACTION (CTA) & NEWSLETTER */}
+  const renderRegisterPage = () => {
+    const regEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail);
+    const pwdStrength   = getPasswordStrength(formPassword);
+    const confirmMatch  = formConfirmPassword.length > 0 && formPassword === formConfirmPassword;
+    const confirmMiss   = formConfirmPassword.length > 0 && formPassword !== formConfirmPassword;
+    return (
+      <section className="login-page-section">
+        <div className="login-card-container">
+          <div className="login-card">
+            <div className="login-card-header">
+              <h2>Join SmartStudy</h2>
+              <p>Create your student account to get started.</p>
+            </div>
+            {registerError && <div className="auth-error-alert">{registerError}</div>}
+            {registerSuccess && <div className="auth-success-alert">{registerSuccess}</div>}
+            <form onSubmit={handleRegisterSubmit} className="login-form">
+              <div className="form-group">
+                <label htmlFor="reg-fullname">Full Name</label>
+                <input type="text" id="reg-fullname" placeholder="Alex Rivera" value={formName} onChange={(e) => setFormName(e.target.value)} required className="login-input" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="reg-email">Student Email</label>
+                <div className="input-with-verification">
+                  <input type="email" id="reg-email" placeholder="alex@stanford.edu" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} required className="login-input" />
+                  {regEmailValid && <span className="email-verify-checkmark"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>}
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="reg-password">Password</label>
+                <div className="password-input-wrapper">
+                  <input type={showPassword ? 'text' : 'password'} id="reg-password" placeholder="Min. 8 characters" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} required className="login-input password-input" />
+                  <button type="button" className="show-password-btn" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button>
+                </div>
+                {formPassword.length > 0 && (
+                  <div className="pwd-strength-container" style={{marginTop:'8px'}}>
+                    <span className="pwd-strength-label" style={{color: pwdStrength.color}}>Strength: {pwdStrength.label}</span>
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
+                <label htmlFor="reg-confirm">Confirm Password</label>
+                <input type={showConfirmPassword ? 'text' : 'password'} id="reg-confirm" placeholder="Re-enter password" value={formConfirmPassword} onChange={(e) => setFormConfirmPassword(e.target.value)} required className="login-input" />
+                {confirmMatch && <p style={{color:'#10B981',fontSize:'12px',marginTop:'4px'}}>✓ Passwords match</p>}
+                {confirmMiss  && <p style={{color:'#EF4444',fontSize:'12px',marginTop:'4px'}}>✗ Passwords do not match</p>}
+              </div>
+              <div className="terms-row">
+                <label className="remember-me-checkbox">
+                  <input type="checkbox" checked={termsAccepted} onChange={() => setTermsAccepted(!termsAccepted)} />
+                  <span className="checkbox-label-text"> I agree to the Terms of Service &amp; Privacy Policy</span>
+                </label>
+              </div>
+              <button type="submit" className="btn-primary-gradient btn-login-submit" disabled={registerLoading}>
+                {registerLoading ? <span className="spinner"></span> : <span>Create Free Account ⚡</span>}
+              </button>
+            </form>
+            <div className="login-card-footer">
+              <p>Already have an account? <button type="button" className="btn-toggle-auth-tier" onClick={() => { setView('login'); setRegisterError(''); setRegisterSuccess(''); }}>Sign In</button></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // ── Unified public return ──
+  return (
+    <div className="public-root">
+
+      {/* NAVBAR */}
+      <header className="navbar-container">
+        <div className="container navbar-inner">
+          <div className="navbar-logo" onClick={() => setView('landing')} style={{cursor:'pointer'}}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <rect width="24" height="24" rx="6" fill="url(#logoGrad)" />
+              <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#8B5CF6"/>
+                  <stop offset="1" stopColor="#EC4899"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <span className="logo-text">SmartStudy</span>
+          </div>
+
+          <nav className="navbar-links">
+            <span className={`navbar-link ${view === 'landing' ? 'active' : ''}`} onClick={() => setView('landing')} style={{cursor:'pointer'}}>Home</span>
+            <span className={`navbar-link ${view === 'features' ? 'active' : ''}`} onClick={() => setView('features')} style={{cursor:'pointer'}}>Features</span>
+            <span className={`navbar-link ${view === 'about' ? 'active' : ''}`} onClick={() => setView('about')} style={{cursor:'pointer'}}>About</span>
+          </nav>
+
+          <div className="navbar-actions">
+            <button className="theme-toggle-btn" onClick={handleToggleTheme} aria-label="Toggle Theme">
+              {theme === 'dark' ? (
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+              ) : (
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              )}
+            </button>
+            {isLoggedIn ? (
+              <>
+                <span className="user-nav-badge" title={userEmail} onClick={() => setView('dashboard')} style={{cursor:'pointer'}}>{userEmail.substring(0, 2).toUpperCase()}</span>
+                <button className="btn-secondary-outline btn-logout" onClick={handleLogout}>Logout</button>
+              </>
+            ) : (
+              <>
+                <button className={`btn-signin-link ${view === 'login' ? 'active' : ''}`} onClick={() => { setView('login'); setIsSignUp(false); }}>Login</button>
+                <button className={`btn-navbar-cta ${view === 'register' ? 'active' : ''}`} onClick={() => { setView('register'); setIsSignUp(true); }}>Sign Up</button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* PAGE CONTENT */}
+      <main className="public-content-container">
+        {view === 'landing'  && renderLandingPage()}
+        {view === 'features' && renderFeaturesPage()}
+        {view === 'about'    && renderAboutPage()}
+        {view === 'login'    && renderLoginPage()}
+        {view === 'register' && renderRegisterPage()}
+      </main>
+
+      {/* CTA FOOTER */}
       <section className="cta-footer-section">
         <div className="cta-glow"></div>
         <div className="container cta-footer-inner">
@@ -2874,30 +2298,23 @@ function App() {
             <h2>Ready to transform your study habits?</h2>
             <p>Get started today for free. No credit card required. Upgrade when you are ready to take your grades to the top tier.</p>
             <div className="cta-form-container">
-              <form onSubmit={(e) => { e.preventDefault(); alert("Thanks for subscribing to our waitlist! Weekly planning tips are on their way."); }}>
-                <input 
-                  type="email" 
-                  placeholder="Enter your student email..." 
-                  required 
-                  className="cta-input-email"
-                />
+              <form onSubmit={(e) => { e.preventDefault(); alert('Thanks for subscribing! Weekly planning tips are on their way.'); }}>
+                <input type="email" placeholder="Enter your student email..." required className="cta-input-email" />
                 <button type="submit" className="cta-btn-submit">Subscribe</button>
               </form>
             </div>
             <span className="subtext-note">✨ Join over 12,000+ students on our monthly learning newsletter.</span>
           </div>
 
-          {/* FOOTER */}
           <footer className="footer-links-grid">
             <div className="footer-col brand-col">
-              <div className="footer-logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <div className="footer-logo" onClick={() => setView('landing')} style={{cursor:'pointer'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect width="24" height="24" rx="6" fill="url(#logoGrad2)" />
                   <path d="M7 11.5L10 14.5L17 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <defs>
                     <linearGradient id="logoGrad2" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#8B5CF6"/>
-                      <stop offset="1" stopColor="#EC4899"/>
+                      <stop stopColor="#8B5CF6"/><stop offset="1" stopColor="#EC4899"/>
                     </linearGradient>
                   </defs>
                 </svg>
@@ -2905,15 +2322,12 @@ function App() {
               </div>
               <p>Developing tools that empower the next generation of academic scholars, innovators, and leaders.</p>
             </div>
-
             <div className="footer-col">
               <h4>Product</h4>
-              <a href="#features">Features</a>
-              <a href="#demo">Session Generator</a>
-              <a href="#pricing">Pricing</a>
+              <span onClick={() => setView('features')} style={{cursor:'pointer',display:'block',marginBottom:'8px',color:'rgba(255,255,255,0.5)'}}>Features</span>
+              <span onClick={() => setView('landing')} style={{cursor:'pointer',display:'block',marginBottom:'8px',color:'rgba(255,255,255,0.5)'}}>Session Generator</span>
               <a href="#">Roadmap</a>
             </div>
-
             <div className="footer-col">
               <h4>Resources</h4>
               <a href="#">Study Tips Blog</a>
@@ -2921,10 +2335,9 @@ function App() {
               <a href="#">API Integrations</a>
               <a href="#">Help Center</a>
             </div>
-
             <div className="footer-col">
               <h4>Company</h4>
-              <a href="#">About Us</a>
+              <span onClick={() => setView('about')} style={{cursor:'pointer',display:'block',marginBottom:'8px',color:'rgba(255,255,255,0.5)'}}>About Us</span>
               <a href="#">Careers</a>
               <a href="#">Privacy Policy</a>
               <a href="#">Terms of Use</a>
@@ -2940,5 +2353,704 @@ function App() {
     </div>
   );
 }
+// ================= NEW TAB COMPONENTS =================
+
+const CalendarTab = ({ events, setEvents, addActivity }) => {
+  const [selectedDate, setSelectedDate] = useState('2026-07-07');
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventTime, setNewEventTime] = useState('09:00');
+
+  const daysInMonth = 31;
+  const startDayOffset = 3; // Wednesday July 1, 2026
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  const cells = [];
+  for (let i = 0; i < startDayOffset; i++) {
+    cells.push({ day: null, dateStr: null });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `2026-07-${d.toString().padStart(2, '0')}`;
+    cells.push({ day: d, dateStr });
+  }
+
+  const handleAddEvent = (e) => {
+    e.preventDefault();
+    if (!newEventTitle.trim()) return;
+    const newEv = {
+      id: Date.now(),
+      title: newEventTitle.trim(),
+      date: selectedDate,
+      time: newEventTime
+    };
+    setEvents(prev => [...prev, newEv]);
+    setNewEventTitle('');
+    addActivity(`Scheduled event "${newEv.title}" for ${selectedDate}`, 'planner');
+  };
+
+  const handleDeleteEvent = (id) => {
+    setEvents(prev => prev.filter(ev => ev.id !== id));
+  };
+
+  const selectedEvents = events.filter(ev => ev.date === selectedDate)
+    .sort((a, b) => a.time.localeCompare(b.time));
+
+  return (
+    <div className="calendar-tab-layout">
+      <div className="tab-header">
+        <h2>Study Calendar</h2>
+        <p>Organize your study sessions, classes, and exams dynamically.</p>
+      </div>
+
+      <div className="calendar-grid-container">
+        <div className="db-widget calendar-month-view">
+          <div className="calendar-month-header">
+            <h3>July 2026</h3>
+          </div>
+          <div className="calendar-weekdays">
+            {weekDays.map(wd => <div key={wd} className="weekday-lbl">{wd}</div>)}
+          </div>
+          <div className="calendar-days-grid">
+            {cells.map((cell, idx) => {
+              if (!cell.day) {
+                return <div key={`empty-${idx}`} className="calendar-day empty"></div>;
+              }
+              const isSelected = cell.dateStr === selectedDate;
+              const hasEvents = events.some(ev => ev.date === cell.dateStr);
+              const dayEvents = events.filter(ev => ev.date === cell.dateStr);
+              
+              return (
+                <div 
+                  key={cell.dateStr} 
+                  className={`calendar-day active-day ${isSelected ? 'selected' : ''} ${hasEvents ? 'has-events' : ''}`}
+                  onClick={() => setSelectedDate(cell.dateStr)}
+                >
+                  <span className="day-number">{cell.day}</span>
+                  {hasEvents && (
+                    <div className="day-event-dots">
+                      {dayEvents.slice(0, 3).map((_, i) => (
+                        <span key={i} className="event-dot"></span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="calendar-details-sidebar">
+          <div className="db-widget calendar-events-widget">
+            <h3>Events for {selectedDate}</h3>
+            {selectedEvents.length === 0 ? (
+              <div className="no-events-state">
+                <p>No study sessions scheduled for this day.</p>
+              </div>
+            ) : (
+              <div className="events-list">
+                {selectedEvents.map(ev => (
+                  <div key={ev.id} className="event-item-card">
+                    <div className="event-time">⏰ {ev.time}</div>
+                    <div className="event-details">
+                      <h4>{ev.title}</h4>
+                    </div>
+                    <button className="btn-delete-event" onClick={() => handleDeleteEvent(ev.id)} title="Delete Event">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="db-widget add-event-widget">
+            <h3>Schedule New Event</h3>
+            <form onSubmit={handleAddEvent} className="add-event-form">
+              <div className="form-group">
+                <label>Selected Date</label>
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e) => setSelectedDate(e.target.value)} 
+                  required 
+                  className="login-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Event Time</label>
+                <input 
+                  type="time" 
+                  value={newEventTime} 
+                  onChange={(e) => setNewEventTime(e.target.value)} 
+                  required 
+                  className="login-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Event Title</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. CS 101 Midterm Exam" 
+                  value={newEventTitle} 
+                  onChange={(e) => setNewEventTitle(e.target.value)} 
+                  required 
+                  className="login-input"
+                />
+              </div>
+              <button type="submit" className="btn-primary-gradient btn-add-event">
+                Add Event 📅
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GoalsTab = ({ goals, setGoals, addActivity }) => {
+  const [newGoalText, setNewGoalText] = useState('');
+  const [newGoalCategory, setNewGoalCategory] = useState('General');
+
+  const handleAddGoal = (e) => {
+    e.preventDefault();
+    if (!newGoalText.trim()) return;
+    const newGl = {
+      id: Date.now(),
+      text: newGoalText.trim(),
+      progress: 0,
+      category: newGoalCategory
+    };
+    setGoals(prev => [...prev, newGl]);
+    setNewGoalText('');
+    addActivity(`Added new goal: "${newGl.text}"`, 'task');
+  };
+
+  const handleIncrementGoal = (id) => {
+    setGoals(prev => prev.map(gl => {
+      if (gl.id === id) {
+        const newProgress = Math.min(gl.progress + 10, 100);
+        if (newProgress === 100) {
+          addActivity(`Completed goal: "${gl.text}" 🏆`, 'task');
+        }
+        return { ...gl, progress: newProgress };
+      }
+      return gl;
+    }));
+  };
+
+  const handleCompleteGoal = (id) => {
+    setGoals(prev => prev.map(gl => {
+      if (gl.id === id) {
+        addActivity(`Completed goal: "${gl.text}" 🏆`, 'task');
+        return { ...gl, progress: 100 };
+      }
+      return gl;
+    }));
+  };
+
+  const handleDeleteGoal = (id) => {
+    setGoals(prev => prev.filter(gl => gl.id !== id));
+  };
+
+  return (
+    <div className="goals-tab-layout">
+      <div className="tab-header">
+        <h2>Academic & Personal Goals</h2>
+        <p>Track your milestones and stay committed to your semester goals.</p>
+      </div>
+
+      <div className="goals-grid-layout">
+        <div className="db-widget goals-list-card">
+          <h3>My Study Goals</h3>
+          {goals.length === 0 ? (
+            <p className="empty-state-text">No active goals yet. Add some below to get started!</p>
+          ) : (
+            <div className="goals-list">
+              {goals.map(gl => (
+                <div key={gl.id} className={`goal-item-row ${gl.progress === 100 ? 'completed' : ''}`}>
+                  <div className="goal-info-col">
+                    <span className="goal-category-badge">{gl.category}</span>
+                    <h4>{gl.text}</h4>
+                    <div className="goal-progress-container">
+                      <div className="progress-bar-track">
+                        <div className="progress-bar-fill" style={{ width: `${gl.progress}%` }}></div>
+                      </div>
+                      <span className="progress-percent-lbl">{gl.progress}%</span>
+                    </div>
+                  </div>
+                  <div className="goal-actions-col">
+                    {gl.progress < 100 && (
+                      <>
+                        <button className="btn-goal-action btn-goal-plus" onClick={() => handleIncrementGoal(gl.id)} title="Add 10% progress">
+                          +10%
+                        </button>
+                        <button className="btn-goal-action btn-goal-check" onClick={() => handleCompleteGoal(gl.id)} title="Mark Complete">
+                          ✓
+                        </button>
+                      </>
+                    )}
+                    <button className="btn-goal-action btn-goal-delete" onClick={() => handleDeleteGoal(gl.id)} title="Delete Goal">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="db-widget add-goal-card">
+          <h3>Add New Goal</h3>
+          <form onSubmit={handleAddGoal} className="add-goal-form">
+            <div className="form-group">
+              <label>Goal Description</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Read 5 pages of CS textbook daily"
+                value={newGoalText}
+                onChange={(e) => setNewGoalText(e.target.value)}
+                required
+                className="login-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Course / Category</label>
+              <select 
+                value={newGoalCategory}
+                onChange={(e) => setNewGoalCategory(e.target.value)}
+                className="login-input"
+              >
+                <option value="Computer Science">Computer Science</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Literature">Literature</option>
+                <option value="Calculus">Calculus</option>
+                <option value="General">General / Personal</option>
+              </select>
+            </div>
+            <button type="submit" className="btn-primary-gradient btn-add-goal">
+              Add Goal 🎯
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NotesTab = ({ notes, setNotes, activeNoteId, setActiveNoteId, addActivity }) => {
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteCategory, setNoteCategory] = useState('General');
+
+  const activeNote = notes.find(n => n.id === activeNoteId);
+
+  useEffect(() => {
+    if (activeNote) {
+      setNoteTitle(activeNote.title);
+      setNoteContent(activeNote.content);
+      setNoteCategory(activeNote.category);
+    } else {
+      setNoteTitle('');
+      setNoteContent('');
+      setNoteCategory('General');
+    }
+  }, [activeNoteId, activeNote]);
+
+  const handleSaveNote = (e) => {
+    e.preventDefault();
+    if (!noteTitle.trim()) return;
+
+    if (activeNoteId === 'new') {
+      const newNt = {
+        id: Date.now(),
+        title: noteTitle.trim(),
+        content: noteContent,
+        category: noteCategory,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      };
+      setNotes(prev => [newNt, ...prev]);
+      setActiveNoteId(newNt.id);
+      addActivity(`Created note: "${newNt.title}"`, 'general');
+    } else {
+      setNotes(prev => prev.map(n => {
+        if (n.id === activeNoteId) {
+          return {
+            ...n,
+            title: noteTitle.trim(),
+            content: noteContent,
+            category: noteCategory
+          };
+        }
+        return n;
+      }));
+      addActivity(`Updated note: "${noteTitle.trim()}"`, 'general');
+    }
+  };
+
+  const handleDeleteNote = (id) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (activeNoteId === id) {
+      setActiveNoteId(notes.length > 1 ? notes[0].id : 'new');
+    }
+  };
+
+  const handleNewNoteClick = () => {
+    setActiveNoteId('new');
+    setNoteTitle('');
+    setNoteContent('');
+    setNoteCategory('General');
+  };
+
+  return (
+    <div className="notes-tab-layout">
+      <div className="tab-header">
+        <h2>Active Recall Notes</h2>
+        <p>Draft your summaries and quick definitions here for spaced retrieval practice.</p>
+      </div>
+
+      <div className="notes-editor-grid">
+        <div className="db-widget notes-list-pane">
+          <div className="notes-pane-header">
+            <h3>My Study Notes</h3>
+            <button className="btn-primary-gradient btn-new-note" onClick={handleNewNoteClick}>
+              + New Note
+            </button>
+          </div>
+          <div className="notes-list-scrollable">
+            {notes.map(n => (
+              <div 
+                key={n.id} 
+                className={`note-list-item ${n.id === activeNoteId ? 'active' : ''}`}
+                onClick={() => setActiveNoteId(n.id)}
+              >
+                <div className="note-item-meta">
+                  <span className="note-cat-badge">{n.category}</span>
+                  <span className="note-date">{n.date}</span>
+                </div>
+                <h4>{n.title}</h4>
+                <p>{n.content.substring(0, 50)}{n.content.length > 50 ? '...' : ''}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="db-widget notes-editor-pane">
+          <form onSubmit={handleSaveNote} className="notes-edit-form">
+            <div className="editor-top-row">
+              <input 
+                type="text" 
+                placeholder="Note Title" 
+                value={noteTitle} 
+                onChange={(e) => setNoteTitle(e.target.value)} 
+                required 
+                className="note-title-input"
+              />
+              <select 
+                value={noteCategory} 
+                onChange={(e) => setNoteCategory(e.target.value)} 
+                className="note-cat-select"
+              >
+                <option value="Computer Science">Computer Science</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Literature">Literature</option>
+                <option value="Calculus">Calculus</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+
+            <textarea 
+              placeholder="Start typing your study notes, definitions, or equations here..." 
+              value={noteContent} 
+              onChange={(e) => setNoteContent(e.target.value)} 
+              className="note-body-textarea"
+            />
+
+            <div className="editor-bottom-row">
+              <button type="submit" className="btn-primary-gradient btn-save-note">
+                Save Note 💾
+              </button>
+              {activeNoteId !== 'new' && (
+                <button type="button" className="btn-secondary-outline btn-delete-note" onClick={() => handleDeleteNote(activeNoteId)}>
+                  Delete Note ✕
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AiAssistantTab = () => {
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, sender: 'ai', text: 'Hello! I am your AI Study Coach. How can I help you master your classes today? Try asking me how to organize your day or explain a study technique.' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isAiTyping, setIsAiTyping] = useState(false);
+
+  const quickPrompts = [
+    "How should I study for exams?",
+    "Create a 4-hour active recall study schedule for Chemistry",
+    "Explain the Spaced Repetition technique",
+    "Suggest focus intervals to beat study burnout"
+  ];
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    setChatMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: userText }]);
+    setChatInput('');
+    setIsAiTyping(true);
+
+    setTimeout(() => {
+      setIsAiTyping(false);
+      let coachResponse = "That is a great question! For best results, I recommend setting up a structured Study Session with Spaced Repetition. Focus for 25 minutes, then test yourself using active recall techniques like blind writing or practice quizzes. What topic are you studying next?";
+      
+      const textLower = userText.toLowerCase();
+      if (textLower.includes('how') && textLower.includes('study')) {
+        coachResponse = "Effective studying is all about retrieval practice! Try the Active Recall method: close your books, write down everything you remember, then check your notes to identify gaps. Also, use the Pomodoro technique to maintain focus blocks.";
+      } else if (textLower.includes('chemistry') || textLower.includes('chem')) {
+        coachResponse = "Chemistry study blocks work best when you split your time: 1) 15 mins reviewing structural logic / mechanism pathways, 2) 30 mins active retrieval drawing mechanisms from memory, and 3) 15 mins doing high-difficulty synthesis problems.";
+      } else if (textLower.includes('spaced repetition') || textLower.includes('repetition')) {
+        coachResponse = "Spaced Repetition leverages the 'spacing effect' by reviewing material at increasing intervals (e.g. Day 1, Day 3, Day 7, Day 14). This moves information from short-term to long-term memory. SmartStudy automates this in your study planner!";
+      } else if (textLower.includes('pomodoro') || textLower.includes('focus') || textLower.includes('burnout')) {
+        coachResponse = "To prevent burnout, use the 25/5 Pomodoro rule: 25 minutes of deep focus, followed by a 5-minute offline rest break. After 4 focus blocks, take a longer 15-30 minute break. Keep your phone out of reach during study hours.";
+      } else if (textLower.includes('plan') || textLower.includes('schedule')) {
+        coachResponse = "Let's construct a study block! Switch over to the AI Study Planner tab, input your subject and duration, and select Cram or Active Recall mode. Our algorithm will immediately output a customized timeline.";
+      }
+
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: coachResponse }]);
+    }, 1200);
+  };
+
+  return (
+    <div className="ai-assistant-tab-layout">
+      <div className="tab-header">
+        <h2>AI Study Assistant & Coach</h2>
+        <p>Ask our neuroscience-backed AI tutor for custom lesson schedules, advice, and tips.</p>
+      </div>
+
+      <div className="ai-chat-card db-widget">
+        <div className="chat-messages-container">
+          {chatMessages.map(msg => (
+            <div key={msg.id} className={`chat-bubble-row ${msg.sender}`}>
+              <div className="chat-avatar">
+                {msg.sender === 'ai' ? '🤖' : '🎓'}
+              </div>
+              <div className="chat-bubble-content">
+                <p>{msg.text}</p>
+              </div>
+            </div>
+          ))}
+          {isAiTyping && (
+            <div className="chat-bubble-row ai typing">
+              <div className="chat-avatar">🤖</div>
+              <div className="chat-bubble-content">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="chat-quick-suggestions">
+          {quickPrompts.map((p, idx) => (
+            <button key={idx} className="btn-quick-prompt" onClick={() => setChatInput(p)}>
+              {p}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSendMessage} className="chat-input-form">
+          <input 
+            type="text" 
+            placeholder="Ask your AI study coach a question..." 
+            value={chatInput} 
+            onChange={(e) => setChatInput(e.target.value)} 
+            className="chat-input-text"
+          />
+          <button type="submit" className="btn-primary-gradient btn-chat-send">
+            Send ⚡
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const NotificationsTab = ({ notifications, setNotifications }) => {
+  const handleMarkAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleClearAll = () => {
+    setNotifications([]);
+  };
+
+  return (
+    <div className="notifications-tab-layout">
+      <div className="tab-header">
+        <h2>Alerts & Notifications</h2>
+        <p>Manage recent reminders, focus completions, and system update logs.</p>
+      </div>
+
+      <div className="db-widget notifications-card">
+        <div className="notifications-card-header">
+          <h3>Recent Notifications</h3>
+          {notifications.length > 0 && (
+            <button className="btn-secondary-outline btn-clear-notifications" onClick={handleClearAll}>
+              Clear All Alerts
+            </button>
+          )}
+        </div>
+
+        {notifications.length === 0 ? (
+          <div className="notifications-empty-state">
+            <span className="bell-large-icon">🔔</span>
+            <h3>No Notifications</h3>
+            <p>You are completely caught up! We will alert you when study reminders trigger.</p>
+          </div>
+        ) : (
+          <div className="notifications-list">
+            {notifications.map(n => (
+              <div key={n.id} className={`notification-row-item ${n.read ? 'read' : 'unread'}`}>
+                <div className="notification-status-badge"></div>
+                <div className="notification-main-content">
+                  <p>{n.text}</p>
+                  <span className="notification-time-ago">{n.time}</span>
+                </div>
+                {!n.read && (
+                  <button className="btn-mark-read" onClick={() => handleMarkAsRead(n.id)}>
+                    Mark Read
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ProfileTab = ({ userEmail, setUserEmail, addActivity }) => {
+  const [profileName, setProfileName] = useState('Alex Rivera');
+  const [profileEmail, setProfileEmail] = useState(userEmail || 'alex@stanford.edu');
+  const [profileWeeklyTarget, setProfileWeeklyTarget] = useState('20');
+  const [profileStudyMode, setProfileStudyMode] = useState('active-recall');
+
+  useEffect(() => {
+    if (userEmail) {
+      setProfileEmail(userEmail);
+    }
+  }, [userEmail]);
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    setUserEmail(profileEmail);
+    addActivity('Updated account profile configurations', 'general');
+    alert('✨ Profile configurations successfully updated!');
+  };
+
+  return (
+    <div className="profile-tab-layout">
+      <div className="tab-header">
+        <h2>My Profile Settings</h2>
+        <p>Personalize your student identity, goals, and default learning styles.</p>
+      </div>
+
+      <div className="profile-grid-layout">
+        <form onSubmit={handleSaveProfile} className="db-widget profile-form-card">
+          <h3>Account Settings</h3>
+          
+          <div className="form-grid-row">
+            <div className="form-group">
+              <label>Full Name</label>
+              <input 
+                type="text" 
+                value={profileName} 
+                onChange={(e) => setProfileName(e.target.value)} 
+                required 
+                className="login-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Student Email Address</label>
+              <input 
+                type="email" 
+                value={profileEmail} 
+                onChange={(e) => setProfileEmail(e.target.value)} 
+                required 
+                className="login-input"
+              />
+            </div>
+          </div>
+
+          <div className="form-grid-row">
+            <div className="form-group">
+              <label>Weekly Study Target Hours</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="168"
+                value={profileWeeklyTarget} 
+                onChange={(e) => setProfileWeeklyTarget(e.target.value)} 
+                required 
+                className="login-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Default Study Mode</label>
+              <select 
+                value={profileStudyMode} 
+                onChange={(e) => setProfileStudyMode(e.target.value)} 
+                className="login-input"
+              >
+                <option value="active-recall">🧠 Active Recall Mode</option>
+                <option value="deep-focus">🎯 Deep Focus Mode</option>
+                <option value="cram-mode">⚡ Cram Mode</option>
+                <option value="spaced-repetition">🔄 Spaced Repetition</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary-gradient btn-save-profile">
+            Save Profile Configurations 💾
+          </button>
+        </form>
+
+        <div className="db-widget profile-stats-card">
+          <h3>Scholar Badge Details</h3>
+          <div className="profile-badge-showcase">
+            <div className="large-badge-icon">🎖️</div>
+            <h4>Smart Scholar Pro</h4>
+            <p className="badge-subtext">Active subscriber since July 2026</p>
+          </div>
+          <div className="badge-details-list">
+            <div className="detail-row">
+              <span>Account Status:</span>
+              <span className="status-active">Active</span>
+            </div>
+            <div className="detail-row">
+              <span>Total Study Blocks:</span>
+              <span>48 Sessions Completed</span>
+            </div>
+            <div className="detail-row">
+              <span>Study Streak:</span>
+              <span>7 Days Active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default App;
+
